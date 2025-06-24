@@ -141,13 +141,3 @@ backend = "postgres"
 # [experimental.read_replicas.database]
 # [experimental.read_replicas.database.aws_rds]
 # identifier = "replica-db-identifier"
-
-[functions]
-# Configure Edge Functions
-[functions.generate-subtasks]
-# Allow network access to OpenAI API
-verify_jwt = false
-import_map = "./functions/generate-subtasks/import_map.json"
-# Grant network permissions for OpenAI API calls
-[functions.generate-subtasks.env]
-DENO_PERMISSIONS = "--allow-net=api.openai.com --allow-env"
