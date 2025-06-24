@@ -20,7 +20,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-1-2', text: 'Create your first real task', completed: false },
       { id: 'sub-auth-1-3', text: 'Complete a subtask to earn XP', completed: false },
     ],
-    aiSuggestion: '🎉 Welcome! Your tasks are now saved to your account and will sync across all your devices.',
+    imageUrl: 'https://picsum.photos/512/512?random=welcome',
+    motivationalQuote: '🎉 Welcome! Your tasks are now saved to your account and will sync across all your devices.',
     createdAt: new Date().toISOString(),
     isRecurring: false,
     noDueDate: false,
@@ -41,7 +42,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-2-3', text: 'Set up productivity apps', completed: false },
       { id: 'sub-auth-2-4', text: 'Create a distraction-free zone', completed: false },
     ],
-    aiSuggestion: '🏢 A well-organized workspace can boost your productivity by up to 25%!',
+    imageUrl: 'https://picsum.photos/512/512?random=workspace',
+    motivationalQuote: '🏢 A well-organized workspace can boost your productivity by up to 25%!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
     noDueDate: false,
@@ -61,7 +63,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-3-2', text: 'Include 10 minutes of movement', completed: false },
       { id: 'sub-auth-3-3', text: 'Practice gratitude or meditation', completed: false },
     ],
-    aiSuggestion: '🌅 A consistent morning routine can improve your mood and productivity throughout the day.',
+    imageUrl: 'https://picsum.photos/512/512?random=morning',
+    motivationalQuote: '🌅 A consistent morning routine can improve your mood and productivity throughout the day.',
     createdAt: new Date().toISOString(),
     isRecurring: true,
     recurringInterval: 'daily',
@@ -128,7 +131,8 @@ export function useSupabaseTasks(userId: string | undefined) {
           text: subtask.text,
           completed: subtask.completed
         })),
-        aiSuggestion: task.ai_suggestion,
+        imageUrl: task.image_url || undefined,
+        motivationalQuote: task.motivational_quote || undefined,
         createdAt: task.created_at,
         completedAt: task.completed_at || undefined,
         isRecurring: task.is_recurring,
@@ -211,6 +215,33 @@ export function useSupabaseTasks(userId: string | undefined) {
     try {
       console.log('💾 Starting task creation process...');
       
+      // Call the generate-task-context Edge Function
+      console.log('🎨 Calling generate-task-context Edge Function...');
+      const { data: contextData, error: contextError } = await supabase.functions.invoke('generate-task-context', {
+        body: {
+          taskName: taskData.title,
+          taskDetails: taskData.description,
+          dueDate: taskData.dueDate || undefined,
+          recurrence: taskData.recurringInterval || undefined
+        }
+      });
+
+      if (contextError) {
+        console.error('❌ Edge function error:', contextError);
+        // Continue with fallback values instead of throwing
+      }
+
+      console.log('✅ Edge function response:', contextData);
+
+      // Use Edge Function results or fallback values
+      const imageUrl = contextData?.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`;
+      const motivationalQuote = contextData?.quote || 'Every step forward is progress.';
+      const generatedSubtasks = contextData?.subtasks || [
+        'Plan and prepare for the task',
+        `Work on completing: ${taskData.title}`,
+        'Review and finalize the work'
+      ];
+
       // Prepare task data for database
       const taskInsertData = {
         user_id: userId,
@@ -222,7 +253,8 @@ export function useSupabaseTasks(userId: string | undefined) {
         estimated_time: taskData.estimatedTime,
         completed: taskData.completed,
         likes: taskData.likes,
-        ai_suggestion: taskData.aiSuggestion,
+        image_url: imageUrl,
+        motivational_quote: motivationalQuote,
         is_recurring: taskData.isRecurring || false,
         recurring_interval: taskData.recurringInterval || null,
         no_due_date: taskData.noDueDate || false
@@ -236,33 +268,21 @@ export function useSupabaseTasks(userId: string | undefined) {
         .select()
         .single();
 
-      // DEBUG: Log the exact result and error from Supabase
-      console.log('🔍 DEBUG - Task insertion result:', taskResult);
-      console.log('🔍 DEBUG - Task insertion error:', taskError);
-      console.log('🔍 DEBUG - Task insertion error type:', typeof taskError);
-      console.log('🔍 DEBUG - Task insertion error stringified:', JSON.stringify(taskError, null, 2));
-
       if (taskError) {
         console.error('❌ Supabase task insertion error:', taskError);
-        console.error('🔍 Error details:', {
-          code: taskError.code,
-          message: taskError.message,
-          details: taskError.details,
-          hint: taskError.hint
-        });
         throw taskError;
       }
       
       console.log('✅ Task created successfully:', taskResult);
 
-      // Insert subtasks if any
-      if (taskData.subtasks && taskData.subtasks.length > 0) {
-        console.log('📝 Inserting subtasks:', taskData.subtasks.length, 'subtasks');
+      // Insert subtasks
+      if (generatedSubtasks && generatedSubtasks.length > 0) {
+        console.log('📝 Inserting subtasks:', generatedSubtasks.length, 'subtasks');
         
-        const subtasksData = taskData.subtasks.map(subtask => ({
+        const subtasksData = generatedSubtasks.map(subtaskText => ({
           task_id: taskResult.id,
-          text: subtask.text,
-          completed: subtask.completed
+          text: subtaskText,
+          completed: false
         }));
         
         console.log('📤 Subtasks data to insert:', subtasksData);
@@ -271,35 +291,23 @@ export function useSupabaseTasks(userId: string | undefined) {
           .from('subtasks')
           .insert(subtasksData);
 
-        // DEBUG: Log subtasks insertion result
-        console.log('🔍 DEBUG - Subtasks insertion result:', subtasksResult);
-        console.log('🔍 DEBUG - Subtasks insertion error:', subtasksError);
-
         if (subtasksError) {
           console.error('❌ Supabase subtask insertion error:', subtasksError);
           throw subtasksError;
         }
         
         console.log('✅ Subtasks inserted successfully');
-      } else {
-        console.log('📝 No subtasks to insert');
       }
 
       // Update user stats
       console.log('📈 Updating user stats...');
-      console.log('📊 Current stats before update:', stats);
-      
-      const { data: statsUpdateResult, error: statsError } = await supabase
+      const { error: statsError } = await supabase
         .from('user_stats')
         .update({ 
           total_tasks: stats.totalTasks + 1,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
-
-      // DEBUG: Log stats update result
-      console.log('🔍 DEBUG - Stats update result:', statsUpdateResult);
-      console.log('🔍 DEBUG - Stats update error:', statsError);
 
       if (statsError) {
         console.error('❌ Stats update error:', statsError);
@@ -316,7 +324,6 @@ export function useSupabaseTasks(userId: string | undefined) {
       console.log('🎉 Task creation process completed successfully');
     } catch (err) {
       console.error('💥 Error in createTask:', err);
-      console.error('🔍 Full error object:', JSON.stringify(err, null, 2));
       setError(err instanceof Error ? err.message : 'Failed to create task');
     }
   }, [userId, stats.totalTasks, fetchTasks, fetchStats]);

@@ -35,13 +35,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const showDueDate = shouldDisplayDueDate(task.dueDate, task.priority);
   const isDummyTask = task.id.startsWith('dummy-');
 
-  // Check if subtasks were AI-generated (they start with 'ai-subtask-' or contain AI-like patterns)
-  const hasAISubtasks = task.subtasks.some(subtask => 
-    subtask.id.startsWith('ai-subtask-') || 
-    subtask.text.includes('Plan and prepare') ||
-    subtask.text.includes('Complete the main')
-  );
-
   // Track progress changes for smooth animation
   useEffect(() => {
     if (progress !== previousProgress) {
@@ -92,6 +85,20 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
       }}
     >
+      {/* Background Image */}
+      {task.imageUrl && (
+        <div 
+          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
+          style={{ backgroundImage: `url(${task.imageUrl})` }}
+        />
+      )}
+      
+      {/* Background Gradient Overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-90`} />
+      
+      {/* Glass Overlay */}
+      <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
+
       {/* Bolt Badge - Positioned relative to task card */}
       <a 
         href="https://bolt.new" 
@@ -136,12 +143,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         )}
       </div>
 
-      {/* Background Gradient */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-90`} />
-      
-      {/* Glass Overlay */}
-      <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
-
       {/* Centered Content Container with increased left padding to avoid scrollbar overlap */}
       <div className="relative w-full max-w-md mx-auto px-4 py-8 pl-8 pr-4 sm:pl-10 sm:pr-8 sm:py-12 pt-[160px] pb-[120px]">
         {/* Task Header */}
@@ -177,15 +178,17 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           )}
         </motion.div>
 
-        {/* AI Suggestion - Helpful Tip Section */}
-        <motion.div 
-          className="mb-8 sm:mb-12 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.4 }}
-        >
-          <p className="text-white/90 text-sm sm:text-base leading-relaxed font-general-sans">{task.aiSuggestion}</p>
-        </motion.div>
+        {/* Motivational Quote - Helpful Tip Section */}
+        {task.motivationalQuote && (
+          <motion.div 
+            className="mb-8 sm:mb-12 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4 }}
+          >
+            <p className="text-white/90 text-sm sm:text-base leading-relaxed font-general-sans">{task.motivationalQuote}</p>
+          </motion.div>
+        )}
 
         {/* View Subtasks Button - Centered Text */}
         <motion.div
@@ -203,12 +206,10 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             <div className="flex items-center justify-center space-x-3">
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-sm sm:text-base">Subtasks</span>
-                {hasAISubtasks && (
-                  <div className="flex items-center space-x-1 px-2 py-0.5 bg-purple-500/20 rounded-full border border-purple-500/30">
-                    <Sparkles className="w-3 h-3 text-purple-300" />
-                    <span className="text-xs text-purple-300 font-medium">AI</span>
-                  </div>
-                )}
+                <div className="flex items-center space-x-1 px-2 py-0.5 bg-purple-500/20 rounded-full border border-purple-500/30">
+                  <Sparkles className="w-3 h-3 text-purple-300" />
+                  <span className="text-xs text-purple-300 font-medium">AI</span>
+                </div>
               </div>
               <motion.span 
                 className="text-xs sm:text-sm text-white/60 font-general-sans"

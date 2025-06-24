@@ -13,7 +13,8 @@ export interface Database {
           estimated_time: number;
           completed: boolean;
           likes: number;
-          ai_suggestion: string;
+          image_url: string | null;
+          motivational_quote: string | null;
           is_recurring: boolean;
           recurring_interval: string | null;
           no_due_date: boolean;
@@ -32,7 +33,8 @@ export interface Database {
           estimated_time?: number;
           completed?: boolean;
           likes?: number;
-          ai_suggestion: string;
+          image_url?: string | null;
+          motivational_quote?: string | null;
           is_recurring?: boolean;
           recurring_interval?: string | null;
           no_due_date?: boolean;
@@ -51,7 +53,8 @@ export interface Database {
           estimated_time?: number;
           completed?: boolean;
           likes?: number;
-          ai_suggestion?: string;
+          image_url?: string | null;
+          motivational_quote?: string | null;
           is_recurring?: boolean;
           recurring_interval?: string | null;
           no_due_date?: boolean;

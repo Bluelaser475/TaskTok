@@ -15,7 +15,8 @@ export interface Task {
   completed: boolean;
   likes: number;
   subtasks: Subtask[];
-  aiSuggestion: string;
+  imageUrl?: string;
+  motivationalQuote?: string;
   createdAt: string;
   completedAt?: string;
   isRecurring?: boolean;

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { Task, Subtask, UserStats } from '../types/task';
-import { generateSubtasks, generateAISuggestion, calculateXP } from '../utils/taskGenerator';
+import { calculateXP } from '../utils/taskGenerator';
 
 // Dummy tasks for new users
 const dummyTasks: Task[] = [
@@ -19,7 +19,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-d1-2', text: 'Identify top 3 priorities', completed: false },
       { id: 'sub-d1-3', text: 'Allocate time slots', completed: false },
     ],
-    aiSuggestion: '💡 Start with your most challenging task first to build momentum!',
+    imageUrl: 'https://picsum.photos/512/512?random=plan',
+    motivationalQuote: '💡 Start with your most challenging task first to build momentum!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
     noDueDate: false,
@@ -39,7 +40,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-d2-2', text: 'Find learning resources', completed: false },
       { id: 'sub-d2-3', text: 'Set a small learning goal', completed: false },
     ],
-    aiSuggestion: '🎯 Consistency is key! Even 15 minutes a day can lead to significant progress.',
+    imageUrl: 'https://picsum.photos/512/512?random=learn',
+    motivationalQuote: '🎯 Consistency is key! Even 15 minutes a day can lead to significant progress.',
     createdAt: new Date().toISOString(),
     isRecurring: false,
     noDueDate: false,
@@ -59,7 +61,8 @@ const dummyTasks: Task[] = [
       { id: 'sub-d3-2', text: 'Close your eyes', completed: false },
       { id: 'sub-d3-3', text: 'Focus on your breath', completed: false },
     ],
-    aiSuggestion: '🧘‍♀️ A short break can boost your productivity and reduce stress. Try a 5-minute meditation!',
+    imageUrl: 'https://picsum.photos/512/512?random=mindful',
+    motivationalQuote: '🧘‍♀️ A short break can boost your productivity and reduce stress. Try a 5-minute meditation!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
     noDueDate: false,
@@ -86,7 +89,13 @@ export function useLocalTasks() {
       ...taskData,
       id: `local-task-${Date.now()}`,
       createdAt: new Date().toISOString(),
-      subtasks: taskData.subtasks.length > 0 ? taskData.subtasks : generateSubtasks(taskData.title, taskData.priority)
+      subtasks: taskData.subtasks.length > 0 ? taskData.subtasks : [
+        { id: `local-subtask-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
+        { id: `local-subtask-${Date.now()}-1`, text: `Work on completing: ${taskData.title}`, completed: false },
+        { id: `local-subtask-${Date.now()}-2`, text: 'Review and finalize the work', completed: false }
+      ],
+      imageUrl: taskData.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`,
+      motivationalQuote: taskData.motivationalQuote || 'Every step forward is progress.'
     };
 
     setUserTasks(prev => [newTask, ...prev]);
