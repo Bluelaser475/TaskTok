@@ -1,0 +1,279 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Logo Typography: League Spartan */
+@font-face {
+  font-family: 'League Spartan';
+  src: url('/fonts/LeagueSpartan-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'League Spartan';
+  src: url('/fonts/LeagueSpartan-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Task Titles Typography: Montserrat */
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Montserrat';
+  src: url('/fonts/Montserrat-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Body Text & Task Content: General Sans (with Nunito fallback) */
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'General Sans';
+  src: url('/fonts/GeneralSans-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Interactive Elements: Supreme */
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/Supreme-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/Supreme-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/Supreme-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Supreme';
+  src: url('/fonts/Supreme-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Minimal Mode Option: Varela (with Silka fallback) */
+@font-face {
+  font-family: 'Varela';
+  src: url('/fonts/Varela-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Silka';
+  src: url('/fonts/Silka-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Silka';
+  src: url('/fonts/Silka-Medium.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* Base Typography Styles */
+html {
+  font-size: 16px; /* Base font size for rem units */
+}
+
+body {
+  font-family: 'General Sans', 'Nunito', sans-serif; /* Default body font */
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-weight: 400;
+}
+
+/* Heading Hierarchy */
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', sans-serif;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  font-weight: 700;
+}
+
+h1 { 
+  font-size: 3.052rem; /* ~48.83px */
+  font-weight: 700;
+}
+
+h2 { 
+  font-size: 2.441rem; /* ~39.06px */
+  font-weight: 700;
+}
+
+h3 { 
+  font-size: 1.953rem; /* ~31.25px */
+  font-weight: 600;
+}
+
+h4 { 
+  font-size: 1.563rem; /* ~25px */
+  font-weight: 600;
+}
+
+h5 { 
+  font-size: 1.25rem; /* ~20px */
+  font-weight: 500;
+}
+
+h6 { 
+  font-size: 1rem; /* ~16px */
+  font-weight: 500;
+}
+
+/* Button and Interactive Element Styles */
+button, .btn {
+  font-family: 'Supreme', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Input and Form Element Styles */
+input, textarea, select {
+  font-family: 'General Sans', 'Nunito', sans-serif;
+  font-weight: 400;
+  letter-spacing: 0.01em;
+}
+
+/* Label Styles */
+label {
+  font-family: 'General Sans', 'Nunito', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+/* Utility classes for specific font usage */
+.font-interactive {
+  font-family: 'Supreme', sans-serif;
+}
+
+.font-minimal {
+  font-family: 'Varela', 'Silka', sans-serif;
+}
+
+/* Accessibility: Ensure proper contrast ratios */
+.text-contrast-high {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.text-contrast-medium {
+  color: rgba(255, 255, 255, 0.80);
+}
+
+.text-contrast-low {
+  color: rgba(255, 255, 255, 0.60);
+}
+
+/* Dark backgrounds */
+.text-dark-contrast-high {
+  color: rgba(0, 0, 0, 0.90);
+}
+
+.text-dark-contrast-medium {
+  color: rgba(0, 0, 0, 0.70);
+}
+
+.text-dark-contrast-low {
+  color: rgba(0, 0, 0, 0.50);
+}
+
+/* Performance optimization: Preload critical fonts */
+@media (prefers-reduced-motion: no-preference) {
+  * {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Responsive typography adjustments */
+@media (max-width: 640px) {
+  html {
+    font-size: 14px;
+  }
+  
+  h1 { font-size: 2.5rem; }
+  h2 { font-size: 2rem; }
+  h3 { font-size: 1.75rem; }
+  h4 { font-size: 1.5rem; }
+  h5 { font-size: 1.25rem; }
+  h6 { font-size: 1rem; }
+}
+
+@media (min-width: 1024px) {
+  html {
+    font-size: 18px;
+  }
+}
