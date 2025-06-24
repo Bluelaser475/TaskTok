@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Plus, Calendar, Clock, Target, RotateCcw } from 'lucide-react';
+import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles } from 'lucide-react';
 import { Task } from '../types/task';
-import { generateSubtasks, generateAISuggestion } from '../utils/taskGenerator';
+import { generateAISuggestion } from '../utils/taskGenerator';
+import { supabase } from '../lib/supabase';
 
 interface TaskFormProps {
   onSubmit: (task: Omit<Task, 'id' | 'createdAt'>) => void;
@@ -34,8 +35,59 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
   });
 
   const [customInterval, setCustomInterval] = useState('');
+  const [isGeneratingSubtasks, setIsGeneratingSubtasks] = useState(false);
+  const [subtaskError, setSubtaskError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const generateAISubtasks = async (title: string, description: string, priority: string, category: string) => {
+    try {
+      console.log('🤖 Calling AI subtask generation...');
+      setIsGeneratingSubtasks(true);
+      setSubtaskError(null);
+
+      const { data, error } = await supabase.functions.invoke('generate-subtasks', {
+        body: {
+          title: title.trim(),
+          description: description.trim(),
+          priority,
+          category
+        }
+      });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw new Error(error.message || 'Failed to generate subtasks');
+      }
+
+      if (!data.success) {
+        console.error('❌ AI generation failed:', data.error);
+        throw new Error(data.error || 'AI subtask generation failed');
+      }
+
+      console.log('✅ AI generated subtasks:', data.subtasks);
+      
+      // Transform AI-generated strings into Subtask objects
+      return data.subtasks.map((text: string, index: number) => ({
+        id: `ai-subtask-${Date.now()}-${index}`,
+        text,
+        completed: false
+      }));
+
+    } catch (error) {
+      console.error('💥 Error generating AI subtasks:', error);
+      setSubtaskError(error instanceof Error ? error.message : 'Failed to generate subtasks');
+      
+      // Return fallback subtasks
+      return [
+        { id: `fallback-subtask-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
+        { id: `fallback-subtask-${Date.now()}-1`, text: `Complete the main part of: ${title}`, completed: false },
+        { id: `fallback-subtask-${Date.now()}-2`, text: 'Review and finalize the task', completed: false }
+      ];
+    } finally {
+      setIsGeneratingSubtasks(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Only require title, provide defaults for everything else
@@ -43,28 +95,66 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       return;
     }
 
-    const subtasks = generateSubtasks(formData.title, formData.priority);
-    const aiSuggestion = generateAISuggestion();
+    try {
+      // Generate AI subtasks
+      const subtasks = await generateAISubtasks(
+        formData.title,
+        formData.description,
+        formData.priority,
+        formData.category
+      );
+      
+      const aiSuggestion = generateAISuggestion();
 
-    const newTask: Omit<Task, 'id' | 'createdAt'> = {
-      title: formData.title.trim(),
-      description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
-      priority: formData.priority,
-      category: formData.category,
-      dueDate: formData.noDueDate ? '' : formData.dueDate,
-      estimatedTime: formData.estimatedTime,
-      completed: false,
-      likes: 0,
-      subtasks,
-      aiSuggestion,
-      isRecurring: formData.isRecurring,
-      recurringInterval: formData.isRecurring 
-        ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
-        : undefined,
-      noDueDate: formData.noDueDate
-    };
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
+        priority: formData.priority,
+        category: formData.category,
+        dueDate: formData.noDueDate ? '' : formData.dueDate,
+        estimatedTime: formData.estimatedTime,
+        completed: false,
+        likes: 0,
+        subtasks,
+        aiSuggestion,
+        isRecurring: formData.isRecurring,
+        recurringInterval: formData.isRecurring 
+          ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
+          : undefined,
+        noDueDate: formData.noDueDate
+      };
 
-    onSubmit(newTask);
+      onSubmit(newTask);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      // Still submit the task even if AI generation fails
+      const aiSuggestion = generateAISuggestion();
+      const fallbackSubtasks = [
+        { id: `fallback-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
+        { id: `fallback-${Date.now()}-1`, text: `Complete: ${formData.title.trim()}`, completed: false },
+        { id: `fallback-${Date.now()}-2`, text: 'Review and finalize', completed: false }
+      ];
+
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || `Complete: ${formData.title.trim()}`,
+        priority: formData.priority,
+        category: formData.category,
+        dueDate: formData.noDueDate ? '' : formData.dueDate,
+        estimatedTime: formData.estimatedTime,
+        completed: false,
+        likes: 0,
+        subtasks: fallbackSubtasks,
+        aiSuggestion,
+        isRecurring: formData.isRecurring,
+        recurringInterval: formData.isRecurring 
+          ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
+          : undefined,
+        noDueDate: formData.noDueDate
+      };
+
+      onSubmit(newTask);
+    }
   };
 
   const priorityColors = {
@@ -89,7 +179,13 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
+            <div className="flex items-center space-x-1 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+              <Sparkles className="w-3 h-3 text-purple-300" />
+              <span className="text-xs text-purple-300 font-medium font-general-sans">AI Powered</span>
+            </div>
+          </div>
           <motion.button
             className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20"
             onClick={onClose}
@@ -356,22 +452,51 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             )}
           </div>
 
+          {/* AI Subtask Generation Status */}
+          {subtaskError && (
+            <motion.div
+              className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-yellow-300 text-sm font-general-sans"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center space-x-2">
+                <Sparkles className="w-4 h-4" />
+                <span>AI subtask generation had an issue, but we'll use smart defaults instead.</span>
+              </div>
+            </motion.div>
+          )}
+
           {/* Submit Button */}
           <motion.button
             type="submit"
+            disabled={!formData.title.trim() || isGeneratingSubtasks}
             className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            disabled={!formData.title.trim()}
+            whileHover={!formData.title.trim() || isGeneratingSubtasks ? {} : { scale: 1.02 }}
+            whileTap={!formData.title.trim() || isGeneratingSubtasks ? {} : { scale: 0.98 }}
           >
-            <Plus className="w-5 h-5" />
-            <span>Create Task</span>
+            {isGeneratingSubtasks ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Generating AI Subtasks...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-5 h-5" />
+                <span>Create Task</span>
+              </>
+            )}
           </motion.button>
 
           {/* Helper Text */}
-          <p className="text-white/50 text-xs text-center font-general-sans">
-            Only task title is required. All other fields are optional with smart defaults.
-          </p>
+          <div className="text-center space-y-1">
+            <p className="text-white/50 text-xs font-general-sans">
+              Only task title is required. All other fields are optional with smart defaults.
+            </p>
+            <div className="flex items-center justify-center space-x-1 text-purple-300/70 text-xs">
+              <Sparkles className="w-3 h-3" />
+              <span className="font-general-sans">AI will automatically generate 3 helpful subtasks for you</span>
+            </div>
+          </div>
         </form>
       </motion.div>
     </motion.div>
