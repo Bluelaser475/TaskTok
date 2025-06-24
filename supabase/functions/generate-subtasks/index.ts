@@ -191,6 +191,18 @@ Respond with only the JSON array of 3 subtask strings.`
         max_tokens: 200
       }),
       signal: controller.signal
+    }).catch((fetchError) => {
+      // Enhanced error handling for network issues
+      if (fetchError.name === 'AbortError') {
+        console.error('❌ OpenAI API request timed out after 10 seconds')
+        throw new Error('OpenAI API request timed out - network connectivity issue')
+      } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+        console.error('❌ Network connectivity issue: Failed to reach OpenAI API')
+        throw new Error('Network connectivity issue: Unable to reach OpenAI API from Edge Function environment')
+      } else {
+        console.error('❌ Unexpected fetch error:', fetchError)
+        throw new Error(`Network request failed: ${fetchError.message}`)
+      }
     })
 
     clearTimeout(timeoutId)
