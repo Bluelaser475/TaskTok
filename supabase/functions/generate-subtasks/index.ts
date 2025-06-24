@@ -62,29 +62,20 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let subtasks: string[] = []
     let source: 'ai' | 'fallback' = 'fallback'
 
-    // Check if OpenAI API key is available
-    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-    
-    if (!openaiApiKey) {
-      console.log('⚠️ OpenAI API key not configured, using rule-based generation')
+    // Try AI generation first
+    try {
+      const aiSubtasks = await generateAISubtasks(title, description, priority, category)
+      if (aiSubtasks && aiSubtasks.length === 3) {
+        subtasks = aiSubtasks
+        source = 'ai'
+        console.log('✅ AI generated subtasks successfully')
+      } else {
+        throw new Error('AI returned invalid subtasks format')
+      }
+    } catch (aiError) {
+      console.warn('⚠️ AI generation failed, using fallback:', aiError)
       subtasks = generateRuleBasedSubtasks(title, description, priority, category)
       source = 'fallback'
-    } else {
-      // Try AI generation first
-      try {
-        const aiSubtasks = await generateAISubtasks(title, description, priority, category)
-        if (aiSubtasks && aiSubtasks.length === 3) {
-          subtasks = aiSubtasks
-          source = 'ai'
-          console.log('✅ AI generated subtasks successfully')
-        } else {
-          throw new Error('AI returned invalid subtasks format')
-        }
-      } catch (aiError) {
-        console.warn('⚠️ AI generation failed, using fallback:', aiError)
-        subtasks = generateRuleBasedSubtasks(title, description, priority, category)
-        source = 'fallback'
-      }
     }
 
     const response: SubtaskResponse = {
@@ -106,13 +97,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error('❌ Error in generate-subtasks function:', error)
     
-    // Always return a successful response with fallback subtasks
-    const fallbackSubtasks = getDefaultSubtasks()
-    
     return new Response(
       JSON.stringify({ 
         success: true, 
-        subtasks: fallbackSubtasks,
+        subtasks: getDefaultSubtasks(),
         source: 'fallback'
       }),
       {
@@ -191,18 +179,6 @@ Respond with only the JSON array of 3 subtask strings.`
         max_tokens: 200
       }),
       signal: controller.signal
-    }).catch((fetchError) => {
-      // Enhanced error handling for network issues
-      if (fetchError.name === 'AbortError') {
-        console.error('❌ OpenAI API request timed out after 10 seconds')
-        throw new Error('OpenAI API request timed out - network connectivity issue')
-      } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
-        console.error('❌ Network connectivity issue: Failed to reach OpenAI API')
-        throw new Error('Network connectivity issue: Unable to reach OpenAI API from Edge Function environment')
-      } else {
-        console.error('❌ Unexpected fetch error:', fetchError)
-        throw new Error(`Network request failed: ${fetchError.message}`)
-      }
     })
 
     clearTimeout(timeoutId)
@@ -210,7 +186,7 @@ Respond with only the JSON array of 3 subtask strings.`
     if (!response.ok) {
       const errorData = await response.text()
       console.error('❌ OpenAI API error:', response.status, errorData)
-      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`)
+      throw new Error(`OpenAI API error: ${response.status}`)
     }
 
     const data = await response.json()
