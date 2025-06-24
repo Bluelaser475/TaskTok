@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles } from 'lucide-react';
+import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Task } from '../types/task';
 import { generateAISuggestion } from '../utils/taskGenerator';
 import { supabase } from '../lib/supabase';
@@ -36,13 +36,17 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
   const [customInterval, setCustomInterval] = useState('');
   const [isGeneratingSubtasks, setIsGeneratingSubtasks] = useState(false);
-  const [subtaskError, setSubtaskError] = useState<string | null>(null);
+  const [subtaskStatus, setSubtaskStatus] = useState<{
+    type: 'success' | 'warning' | 'error' | null;
+    message: string;
+    source?: 'ai' | 'fallback';
+  }>({ type: null, message: '' });
 
   const generateAISubtasks = async (title: string, description: string, priority: string, category: string) => {
     try {
       console.log('🤖 Calling AI subtask generation...');
       setIsGeneratingSubtasks(true);
-      setSubtaskError(null);
+      setSubtaskStatus({ type: null, message: '' });
 
       const { data, error } = await supabase.functions.invoke('generate-subtasks', {
         body: {
@@ -63,18 +67,37 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
         throw new Error(data.error || 'AI subtask generation failed');
       }
 
-      console.log('✅ AI generated subtasks:', data.subtasks);
+      console.log('✅ AI generated subtasks:', data.subtasks, 'Source:', data.source);
+      
+      // Set status message based on source
+      if (data.source === 'ai') {
+        setSubtaskStatus({
+          type: 'success',
+          message: 'AI successfully generated personalized subtasks for your task!',
+          source: 'ai'
+        });
+      } else {
+        setSubtaskStatus({
+          type: 'warning',
+          message: 'Using smart fallback subtasks (AI temporarily unavailable)',
+          source: 'fallback'
+        });
+      }
       
       // Transform AI-generated strings into Subtask objects
       return data.subtasks.map((text: string, index: number) => ({
-        id: `ai-subtask-${Date.now()}-${index}`,
+        id: `${data.source === 'ai' ? 'ai' : 'fallback'}-subtask-${Date.now()}-${index}`,
         text,
         completed: false
       }));
 
     } catch (error) {
       console.error('💥 Error generating AI subtasks:', error);
-      setSubtaskError(error instanceof Error ? error.message : 'Failed to generate subtasks');
+      setSubtaskStatus({
+        type: 'error',
+        message: 'Subtask generation failed, using basic defaults',
+        source: 'fallback'
+      });
       
       // Return fallback subtasks
       return [
@@ -163,6 +186,32 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     low: 'border-green-500/50 bg-green-500/10'
   };
 
+  const getStatusIcon = () => {
+    switch (subtaskStatus.type) {
+      case 'success':
+        return <Sparkles className="w-4 h-4" />;
+      case 'warning':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'error':
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (subtaskStatus.type) {
+      case 'success':
+        return 'bg-green-500/20 border-green-500/30 text-green-300';
+      case 'warning':
+        return 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300';
+      case 'error':
+        return 'bg-red-500/20 border-red-500/30 text-red-300';
+      default:
+        return '';
+    }
+  };
+
   return (
     <motion.div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
@@ -226,7 +275,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none font-general-sans"
-              placeholder="Add more details... (optional)"
+              placeholder="Add more details to help AI generate better subtasks..."
               rows={3}
             />
           </div>
@@ -453,15 +502,15 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
           </div>
 
           {/* AI Subtask Generation Status */}
-          {subtaskError && (
+          {subtaskStatus.type && (
             <motion.div
-              className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-xl text-yellow-300 text-sm font-general-sans"
+              className={`p-3 border rounded-xl text-sm font-general-sans ${getStatusColor()}`}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
             >
               <div className="flex items-center space-x-2">
-                <Sparkles className="w-4 h-4" />
-                <span>AI subtask generation had an issue, but we'll use smart defaults instead.</span>
+                {getStatusIcon()}
+                <span>{subtaskStatus.message}</span>
               </div>
             </motion.div>
           )}
