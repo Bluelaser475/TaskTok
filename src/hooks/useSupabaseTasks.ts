@@ -236,6 +236,12 @@ export function useSupabaseTasks(userId: string | undefined) {
         .select()
         .single();
 
+      // DEBUG: Log the exact result and error from Supabase
+      console.log('🔍 DEBUG - Task insertion result:', taskResult);
+      console.log('🔍 DEBUG - Task insertion error:', taskError);
+      console.log('🔍 DEBUG - Task insertion error type:', typeof taskError);
+      console.log('🔍 DEBUG - Task insertion error stringified:', JSON.stringify(taskError, null, 2));
+
       if (taskError) {
         console.error('❌ Supabase task insertion error:', taskError);
         console.error('🔍 Error details:', {
@@ -261,9 +267,13 @@ export function useSupabaseTasks(userId: string | undefined) {
         
         console.log('📤 Subtasks data to insert:', subtasksData);
 
-        const { error: subtasksError } = await supabase
+        const { data: subtasksResult, error: subtasksError } = await supabase
           .from('subtasks')
           .insert(subtasksData);
+
+        // DEBUG: Log subtasks insertion result
+        console.log('🔍 DEBUG - Subtasks insertion result:', subtasksResult);
+        console.log('🔍 DEBUG - Subtasks insertion error:', subtasksError);
 
         if (subtasksError) {
           console.error('❌ Supabase subtask insertion error:', subtasksError);
@@ -279,13 +289,17 @@ export function useSupabaseTasks(userId: string | undefined) {
       console.log('📈 Updating user stats...');
       console.log('📊 Current stats before update:', stats);
       
-      const { error: statsError } = await supabase
+      const { data: statsUpdateResult, error: statsError } = await supabase
         .from('user_stats')
         .update({ 
           total_tasks: stats.totalTasks + 1,
           updated_at: new Date().toISOString()
         })
         .eq('user_id', userId);
+
+      // DEBUG: Log stats update result
+      console.log('🔍 DEBUG - Stats update result:', statsUpdateResult);
+      console.log('🔍 DEBUG - Stats update error:', statsError);
 
       if (statsError) {
         console.error('❌ Stats update error:', statsError);
