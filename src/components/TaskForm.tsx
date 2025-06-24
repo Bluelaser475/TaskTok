@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { X, Plus, Calendar, Clock, Target, RotateCcw } from 'lucide-react';
+import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle } from 'lucide-react';
 import { Task } from '../types/task';
-import { generateSubtasks, generateAISuggestion } from '../utils/taskGenerator';
+import { supabase } from '../lib/supabase';
 
 interface TaskFormProps {
   onSubmit: (task: Omit<Task, 'id' | 'createdAt'>) => void;
@@ -34,6 +34,78 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
   });
 
   const [customInterval, setCustomInterval] = useState('');
+  const [isGeneratingContext, setIsGeneratingContext] = useState(false);
+  const [contextStatus, setContextStatus] = useState<{
+    type: 'success' | 'warning' | 'error' | null;
+    message: string;
+    source?: 'ai' | 'fallback';
+  }>({ type: null, message: '' });
+
+  const generateTaskContext = async (title: string, description: string, dueDate: string, recurrence: string) => {
+    try {
+      console.log('🎨 Calling AI task context generation...');
+      setIsGeneratingContext(true);
+      setContextStatus({ type: null, message: '' });
+
+      const { data, error } = await supabase.functions.invoke('generate-task-context', {
+        body: {
+          taskName: title.trim(),
+          taskDetails: description.trim(),
+          dueDate: dueDate || undefined,
+          recurrence: recurrence || undefined
+        }
+      });
+
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw new Error(error.message || 'Failed to generate task context');
+      }
+
+      if (!data.success) {
+        console.error('❌ AI generation failed:', data.error);
+        throw new Error(data.error || 'AI task context generation failed');
+      }
+
+      console.log('✅ AI generated task context:', data);
+      
+      setContextStatus({
+        type: 'success',
+        message: 'AI successfully generated image, quote, and subtasks for your task!',
+        source: 'ai'
+      });
+      
+      return {
+        imageUrl: data.imageUrl,
+        motivationalQuote: data.quote,
+        subtasks: data.subtasks.map((text: string, index: number) => ({
+          id: `ai-subtask-${Date.now()}-${index}`,
+          text,
+          completed: false
+        }))
+      };
+
+    } catch (error) {
+      console.error('💥 Error generating AI task context:', error);
+      setContextStatus({
+        type: 'error',
+        message: 'Context generation failed, using basic defaults',
+        source: 'fallback'
+      });
+      
+      // Return fallback values
+      return {
+        imageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
+        motivationalQuote: 'Every step forward is progress.',
+        subtasks: [
+          { id: `fallback-subtask-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
+          { id: `fallback-subtask-${Date.now()}-1`, text: `Complete the main part of: ${title}`, completed: false },
+          { id: `fallback-subtask-${Date.now()}-2`, text: 'Review and finalize the task', completed: false }
+        ]
+      };
+    } finally {
+      setIsGeneratingContext(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,35 +115,97 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       return;
     }
 
-    // Generate subtasks using local rule-based generation
-    const subtasks = generateSubtasks(formData.title, formData.priority);
-    const aiSuggestion = generateAISuggestion();
+    try {
+      // Generate AI task context
+      const taskContext = await generateTaskContext(
+        formData.title,
+        formData.description,
+        formData.dueDate,
+        formData.recurringInterval
+      );
 
-    const newTask: Omit<Task, 'id' | 'createdAt'> = {
-      title: formData.title.trim(),
-      description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
-      priority: formData.priority,
-      category: formData.category,
-      dueDate: formData.noDueDate ? '' : formData.dueDate,
-      estimatedTime: formData.estimatedTime,
-      completed: false,
-      likes: 0,
-      subtasks,
-      aiSuggestion,
-      isRecurring: formData.isRecurring,
-      recurringInterval: formData.isRecurring 
-        ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
-        : undefined,
-      noDueDate: formData.noDueDate
-    };
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
+        priority: formData.priority,
+        category: formData.category,
+        dueDate: formData.noDueDate ? '' : formData.dueDate,
+        estimatedTime: formData.estimatedTime,
+        completed: false,
+        likes: 0,
+        subtasks: taskContext.subtasks,
+        imageUrl: taskContext.imageUrl,
+        motivationalQuote: taskContext.motivationalQuote,
+        isRecurring: formData.isRecurring,
+        recurringInterval: formData.isRecurring 
+          ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
+          : undefined,
+        noDueDate: formData.noDueDate
+      };
 
-    onSubmit(newTask);
+      onSubmit(newTask);
+    } catch (error) {
+      console.error('Error creating task:', error);
+      // Still submit the task even if context generation fails
+      const fallbackSubtasks = [
+        { id: `fallback-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
+        { id: `fallback-${Date.now()}-1`, text: `Complete: ${formData.title.trim()}`, completed: false },
+        { id: `fallback-${Date.now()}-2`, text: 'Review and finalize', completed: false }
+      ];
+
+      const newTask: Omit<Task, 'id' | 'createdAt'> = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || `Complete: ${formData.title.trim()}`,
+        priority: formData.priority,
+        category: formData.category,
+        dueDate: formData.noDueDate ? '' : formData.dueDate,
+        estimatedTime: formData.estimatedTime,
+        completed: false,
+        likes: 0,
+        subtasks: fallbackSubtasks,
+        imageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
+        motivationalQuote: 'Every step forward is progress.',
+        isRecurring: formData.isRecurring,
+        recurringInterval: formData.isRecurring 
+          ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
+          : undefined,
+        noDueDate: formData.noDueDate
+      };
+
+      onSubmit(newTask);
+    }
   };
 
   const priorityColors = {
     high: 'border-red-500/50 bg-red-500/10',
     medium: 'border-yellow-500/50 bg-yellow-500/10',
     low: 'border-green-500/50 bg-green-500/10'
+  };
+
+  const getStatusIcon = () => {
+    switch (contextStatus.type) {
+      case 'success':
+        return <Sparkles className="w-4 h-4" />;
+      case 'warning':
+        return <AlertCircle className="w-4 h-4" />;
+      case 'error':
+        return <AlertCircle className="w-4 h-4" />;
+      default:
+        return null;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (contextStatus.type) {
+      case 'success':
+        return 'bg-green-500/20 border-green-500/30 text-green-300';
+      case 'warning':
+        return 'bg-yellow-500/20 border-yellow-500/30 text-yellow-300';
+      case 'error':
+        return 'bg-red-500/20 border-red-500/30 text-red-300';
+      default:
+        return '';
+    }
   };
 
   return (
@@ -90,7 +224,13 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
+          <div className="flex items-center space-x-3">
+            <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
+            <div className="flex items-center space-x-1 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
+              <Sparkles className="w-3 h-3 text-purple-300" />
+              <span className="text-xs text-purple-300 font-medium font-general-sans">AI Powered</span>
+            </div>
+          </div>
           <motion.button
             className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20"
             onClick={onClose}
@@ -131,7 +271,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none font-general-sans"
-              placeholder="Add more details about your task..."
+              placeholder="Add more details to help AI generate better context..."
               rows={3}
             />
           </div>
@@ -357,16 +497,39 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             )}
           </div>
 
+          {/* AI Task Context Generation Status */}
+          {contextStatus.type && (
+            <motion.div
+              className={`p-3 border rounded-xl text-sm font-general-sans ${getStatusColor()}`}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center space-x-2">
+                {getStatusIcon()}
+                <span>{contextStatus.message}</span>
+              </div>
+            </motion.div>
+          )}
+
           {/* Submit Button */}
           <motion.button
             type="submit"
-            disabled={!formData.title.trim()}
+            disabled={!formData.title.trim() || isGeneratingContext}
             className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
-            whileHover={!formData.title.trim() ? {} : { scale: 1.02 }}
-            whileTap={!formData.title.trim() ? {} : { scale: 0.98 }}
+            whileHover={!formData.title.trim() || isGeneratingContext ? {} : { scale: 1.02 }}
+            whileTap={!formData.title.trim() || isGeneratingContext ? {} : { scale: 0.98 }}
           >
-            <Plus className="w-5 h-5" />
-            <span>Create Task</span>
+            {isGeneratingContext ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Generating AI Context...</span>
+              </>
+            ) : (
+              <>
+                <Plus className="w-5 h-5" />
+                <span>Create Task</span>
+              </>
+            )}
           </motion.button>
 
           {/* Helper Text */}
@@ -374,9 +537,10 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             <p className="text-white/50 text-xs font-general-sans">
               Only task title is required. All other fields are optional with smart defaults.
             </p>
-            <p className="text-white/60 text-xs font-general-sans">
-              Subtasks will be automatically generated based on your task details.
-            </p>
+            <div className="flex items-center justify-center space-x-1 text-purple-300/70 text-xs">
+              <Sparkles className="w-3 h-3" />
+              <span className="font-general-sans">AI will automatically generate image, quote, and subtasks for you</span>
+            </div>
           </div>
         </form>
       </motion.div>
