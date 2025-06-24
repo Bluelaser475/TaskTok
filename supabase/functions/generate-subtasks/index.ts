@@ -62,13 +62,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let subtasks: string[] = []
     let source: 'ai' | 'fallback' = 'fallback'
 
-    // Try AI generation first, but always fall back to rule-based generation
-    try {
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
-      
-      if (openaiApiKey && openaiApiKey.trim().length > 0) {
-        console.log('🔑 OpenAI API key found, attempting AI generation...')
-        const aiSubtasks = await generateAISubtasks(title, description, priority, category, openaiApiKey)
+    // Check if OpenAI API key is available
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    
+    if (!openaiApiKey) {
+      console.log('⚠️ OpenAI API key not configured, using rule-based generation')
+      subtasks = generateRuleBasedSubtasks(title, description, priority, category)
+      source = 'fallback'
+    } else {
+      // Try AI generation first
+      try {
+        const aiSubtasks = await generateAISubtasks(title, description, priority, category)
         if (aiSubtasks && aiSubtasks.length === 3) {
           subtasks = aiSubtasks
           source = 'ai'
@@ -76,14 +80,11 @@ Deno.serve(async (req: Request): Promise<Response> => {
         } else {
           throw new Error('AI returned invalid subtasks format')
         }
-      } else {
-        console.log('⚠️ No OpenAI API key configured, using rule-based generation')
-        throw new Error('OpenAI API key not configured')
+      } catch (aiError) {
+        console.warn('⚠️ AI generation failed, using fallback:', aiError)
+        subtasks = generateRuleBasedSubtasks(title, description, priority, category)
+        source = 'fallback'
       }
-    } catch (aiError) {
-      console.warn('⚠️ AI generation failed, using rule-based fallback:', aiError)
-      subtasks = generateRuleBasedSubtasks(title, description, priority, category)
-      source = 'fallback'
     }
 
     const response: SubtaskResponse = {
@@ -112,8 +113,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       JSON.stringify({ 
         success: true, 
         subtasks: fallbackSubtasks,
-        source: 'fallback',
-        error: 'Used fallback generation due to error'
+        source: 'fallback'
       }),
       {
         status: 200,
@@ -127,9 +127,14 @@ async function generateAISubtasks(
   title: string,
   description: string = '',
   priority: string = 'medium',
-  category: string = 'Personal',
-  apiKey: string
+  category: string = 'Personal'
 ): Promise<string[]> {
+  const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+  
+  if (!openaiApiKey) {
+    throw new Error('OpenAI API key not configured')
+  }
+
   const systemPrompt = `You are a highly efficient productivity assistant specialized in breaking down complex tasks into clear, actionable subtasks. Your goal is to help users manage their workload by providing precise, achievable steps.
 
 CRITICAL: You must respond with ONLY a valid JSON array of exactly 3 strings. No other text, explanations, or formatting. Each string should be a specific, actionable subtask.
@@ -162,55 +167,56 @@ Respond with only the JSON array of 3 subtask strings.`
     console.log('🔄 Calling OpenAI API...')
     
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => {
-      console.log('⏰ OpenAI API call timed out')
-      controller.abort()
-    }, 15000) // 15 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
     
-    const requestBody = {
-      model: 'gpt-3.5-turbo',
-      messages: [
-        {
-          role: 'system',
-          content: systemPrompt
-        },
-        {
-          role: 'user',
-          content: userPrompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 200
-    }
-
-    console.log('📤 Sending request to OpenAI with body:', JSON.stringify(requestBody, null, 2))
-
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'Authorization': `Bearer ${openaiApiKey}`,
         'Content-Type': 'application/json',
-        'User-Agent': 'Supabase-Edge-Function/1.0'
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: systemPrompt
+          },
+          {
+            role: 'user',
+            content: userPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 200
+      }),
       signal: controller.signal
+    }).catch((fetchError) => {
+      // Enhanced error handling for network issues
+      if (fetchError.name === 'AbortError') {
+        console.error('❌ OpenAI API request timed out after 10 seconds')
+        throw new Error('OpenAI API request timed out - network connectivity issue')
+      } else if (fetchError instanceof TypeError && fetchError.message.includes('Failed to fetch')) {
+        console.error('❌ Network connectivity issue: Failed to reach OpenAI API')
+        throw new Error('Network connectivity issue: Unable to reach OpenAI API from Edge Function environment')
+      } else {
+        console.error('❌ Unexpected fetch error:', fetchError)
+        throw new Error(`Network request failed: ${fetchError.message}`)
+      }
     })
 
     clearTimeout(timeoutId)
 
-    console.log('📥 OpenAI response status:', response.status)
-
     if (!response.ok) {
-      const errorText = await response.text()
-      console.error('❌ OpenAI API error:', response.status, response.statusText, errorText)
-      throw new Error(`OpenAI API error: ${response.status} ${response.statusText}`)
+      const errorData = await response.text()
+      console.error('❌ OpenAI API error:', response.status, errorData)
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`)
     }
 
     const data = await response.json()
-    console.log('📊 OpenAI response data:', JSON.stringify(data, null, 2))
+    console.log('📥 OpenAI response:', data)
 
     if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-      console.error('❌ Invalid OpenAI response structure:', data)
       throw new Error('Invalid OpenAI response structure')
     }
 
@@ -222,7 +228,7 @@ Respond with only the JSON array of 3 subtask strings.`
     try {
       parsedContent = JSON.parse(content)
     } catch (parseError) {
-      console.error('❌ Failed to parse AI response as JSON:', content, parseError)
+      console.error('❌ Failed to parse AI response as JSON:', content)
       throw new Error('AI response is not valid JSON')
     }
 
@@ -236,13 +242,11 @@ Respond with only the JSON array of 3 subtask strings.`
     } else if (parsedContent.tasks && Array.isArray(parsedContent.tasks)) {
       subtasks = parsedContent.tasks
     } else {
-      console.error('❌ AI response does not contain valid subtasks array:', parsedContent)
       throw new Error('AI response does not contain a valid subtasks array')
     }
 
     // Validate subtasks
     if (!Array.isArray(subtasks) || subtasks.length !== 3) {
-      console.error('❌ Expected 3 subtasks, got:', subtasks?.length || 0, subtasks)
       throw new Error(`Expected 3 subtasks, got ${subtasks?.length || 0}`)
     }
 
@@ -252,19 +256,12 @@ Respond with only the JSON array of 3 subtask strings.`
       .filter(task => task.length > 0)
 
     if (validSubtasks.length !== 3) {
-      console.error('❌ Some subtasks are empty or invalid:', subtasks, validSubtasks)
       throw new Error('Some subtasks are empty or invalid')
     }
 
-    console.log('✅ Successfully parsed and validated AI subtasks:', validSubtasks)
     return validSubtasks
 
   } catch (error) {
-    if (error.name === 'AbortError') {
-      console.error('❌ OpenAI API call was aborted (timeout)')
-      throw new Error('OpenAI API call timed out')
-    }
-    
     console.error('❌ OpenAI API call failed:', error)
     throw error
   }
@@ -276,8 +273,6 @@ function generateRuleBasedSubtasks(
   priority: string = 'medium',
   category: string = 'Personal'
 ): string[] {
-  console.log('🔧 Generating rule-based subtasks for:', { title, description, priority, category })
-  
   const titleLower = title.toLowerCase()
   const descLower = description.toLowerCase()
   const combined = `${titleLower} ${descLower}`.trim()
@@ -369,7 +364,6 @@ function generateRuleBasedSubtasks(
   // Check for keyword matches
   for (const pattern of keywordPatterns) {
     if (pattern.keywords.some(keyword => combined.includes(keyword))) {
-      console.log('✅ Found keyword match for pattern:', pattern.keywords)
       return pattern.subtasks
     }
   }
@@ -467,8 +461,6 @@ function generateRuleBasedSubtasks(
   const templates = categoryTemplates[category as keyof typeof categoryTemplates] || categoryTemplates['Personal']
   const priorityTemplate = templates[priority as keyof typeof templates] || templates['medium']
 
-  console.log('✅ Using category template for:', category, priority)
-
   // Customize the middle subtask to be more specific to the actual task
   return priorityTemplate.map((subtask, index) => {
     if (index === 1) {
@@ -479,7 +471,6 @@ function generateRuleBasedSubtasks(
 }
 
 function getDefaultSubtasks(): string[] {
-  console.log('🔧 Using default subtasks')
   return [
     'Plan and prepare for the task',
     'Work on the main objective',
