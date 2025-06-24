@@ -62,20 +62,29 @@ Deno.serve(async (req: Request): Promise<Response> => {
     let subtasks: string[] = []
     let source: 'ai' | 'fallback' = 'fallback'
 
-    // Try AI generation first
-    try {
-      const aiSubtasks = await generateAISubtasks(title, description, priority, category)
-      if (aiSubtasks && aiSubtasks.length === 3) {
-        subtasks = aiSubtasks
-        source = 'ai'
-        console.log('✅ AI generated subtasks successfully')
-      } else {
-        throw new Error('AI returned invalid subtasks format')
-      }
-    } catch (aiError) {
-      console.warn('⚠️ AI generation failed, using fallback:', aiError)
+    // Check if OpenAI API key is available
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    
+    if (!openaiApiKey) {
+      console.log('⚠️ OpenAI API key not configured, using rule-based generation')
       subtasks = generateRuleBasedSubtasks(title, description, priority, category)
       source = 'fallback'
+    } else {
+      // Try AI generation first
+      try {
+        const aiSubtasks = await generateAISubtasks(title, description, priority, category)
+        if (aiSubtasks && aiSubtasks.length === 3) {
+          subtasks = aiSubtasks
+          source = 'ai'
+          console.log('✅ AI generated subtasks successfully')
+        } else {
+          throw new Error('AI returned invalid subtasks format')
+        }
+      } catch (aiError) {
+        console.warn('⚠️ AI generation failed, using fallback:', aiError)
+        subtasks = generateRuleBasedSubtasks(title, description, priority, category)
+        source = 'fallback'
+      }
     }
 
     const response: SubtaskResponse = {
@@ -97,15 +106,17 @@ Deno.serve(async (req: Request): Promise<Response> => {
   } catch (error) {
     console.error('❌ Error in generate-subtasks function:', error)
     
+    // Always return a successful response with fallback subtasks
+    const fallbackSubtasks = getDefaultSubtasks()
+    
     return new Response(
       JSON.stringify({ 
-        success: false, 
-        error: "Failed to generate subtasks",
-        subtasks: getDefaultSubtasks(),
+        success: true, 
+        subtasks: fallbackSubtasks,
         source: 'fallback'
       }),
       {
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       }
     )
@@ -155,6 +166,9 @@ Respond with only the JSON array of 3 subtask strings.`
   try {
     console.log('🔄 Calling OpenAI API...')
     
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+    
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -174,15 +188,17 @@ Respond with only the JSON array of 3 subtask strings.`
           }
         ],
         temperature: 0.7,
-        max_tokens: 200,
-        response_format: { type: 'json_object' }
-      })
+        max_tokens: 200
+      }),
+      signal: controller.signal
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errorData = await response.text()
       console.error('❌ OpenAI API error:', response.status, errorData)
-      throw new Error(`OpenAI API error: ${response.status}`)
+      throw new Error(`OpenAI API error: ${response.status} - ${errorData}`)
     }
 
     const data = await response.json()
