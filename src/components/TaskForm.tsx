@@ -25,7 +25,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     title: '',
     description: '',
     priority: 'medium' as Task['priority'],
-    category: 'Work',
+    category: 'Personal',
     dueDate: new Date().toISOString().split('T')[0],
     estimatedTime: 25,
     isRecurring: false,
@@ -38,12 +38,17 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Only require title, provide defaults for everything else
+    if (!formData.title.trim()) {
+      return;
+    }
+
     const subtasks = generateSubtasks(formData.title, formData.priority);
     const aiSuggestion = generateAISuggestion();
 
     const newTask: Omit<Task, 'id' | 'createdAt'> = {
-      title: formData.title,
-      description: formData.description,
+      title: formData.title.trim(),
+      description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
       priority: formData.priority,
       category: formData.category,
       dueDate: formData.noDueDate ? '' : formData.dueDate,
@@ -96,10 +101,10 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Title */}
+          {/* Title - REQUIRED */}
           <div>
             <label htmlFor="task-title" className="block text-white/90 text-sm font-medium mb-2 font-general-sans">
-              Task Title
+              Task Title <span className="text-red-400">*</span>
             </label>
             <input
               type="text"
@@ -110,13 +115,14 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-general-sans"
               placeholder="What needs to be done?"
               required
+              autoFocus
             />
           </div>
 
-          {/* Description */}
+          {/* Description - OPTIONAL */}
           <div>
             <label htmlFor="task-description" className="block text-white/90 text-sm font-medium mb-2 font-general-sans">
-              Description
+              Description <span className="text-white/50 text-xs">(optional)</span>
             </label>
             <textarea
               id="task-description"
@@ -124,9 +130,8 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               value={formData.description}
               onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
               className="w-full px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 resize-none font-general-sans"
-              placeholder="Add more details..."
+              placeholder="Add more details... (optional)"
               rows={3}
-              required
             />
           </div>
 
@@ -343,7 +348,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
                     ? 'bg-white/5 border-white/10 text-white/30 cursor-not-allowed' 
                     : 'bg-white/10 border-white/20'
                 }`}
-                required={!formData.noDueDate}
               />
             </div>
             
@@ -355,14 +359,19 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
           {/* Submit Button */}
           <motion.button
             type="submit"
-            className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme"
+            className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
-            disabled={!formData.title.trim() || !formData.description.trim() || (!formData.noDueDate && !formData.dueDate)}
+            disabled={!formData.title.trim()}
           >
             <Plus className="w-5 h-5" />
             <span>Create Task</span>
           </motion.button>
+
+          {/* Helper Text */}
+          <p className="text-white/50 text-xs text-center font-general-sans">
+            Only task title is required. All other fields are optional with smart defaults.
+          </p>
         </form>
       </motion.div>
     </motion.div>
