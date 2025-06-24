@@ -147,7 +147,7 @@ backend = "postgres"
 [functions.generate-subtasks]
 # Allow network access to OpenAI API
 verify_jwt = false
-import_map = "./supabase/functions/import_map.json"
+import_map = "./functions/generate-subtasks/import_map.json"
 # Grant network permissions for OpenAI API calls
 [functions.generate-subtasks.env]
 DENO_PERMISSIONS = "--allow-net=api.openai.com --allow-env"
