@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle } from 'lucide-react';
-import { Task } from '../types/task';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle, Trash2, Wand2 } from 'lucide-react';
+import { Task, Subtask } from '../types/task';
 import { supabase } from '../lib/supabase';
 
 interface TaskFormProps {
@@ -30,11 +30,15 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     estimatedTime: 25,
     isRecurring: false,
     recurringInterval: '',
-    noDueDate: false
+    noDueDate: false,
+    subtasks: [] as Subtask[],
+    imageUrl: '',
+    motivationalQuote: ''
   });
 
   const [customInterval, setCustomInterval] = useState('');
-  const [isGeneratingContext, setIsGeneratingContext] = useState(false);
+  const [newManualSubtaskText, setNewManualSubtaskText] = useState('');
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   const [contextStatus, setContextStatus] = useState<{
     type: 'success' | 'warning' | 'error' | null;
     message: string;
@@ -44,7 +48,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
   const generateTaskContext = async (title: string, description: string, dueDate: string, recurrence: string) => {
     try {
       console.log('🎨 Calling AI task context generation...');
-      setIsGeneratingContext(true);
       setContextStatus({ type: null, message: '' });
 
       // Check if Supabase URL is configured
@@ -123,9 +126,74 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
           { id: `fallback-subtask-${Date.now()}-2`, text: 'Review and finalize the task', completed: false }
         ]
       };
-    } finally {
-      setIsGeneratingContext(false);
     }
+  };
+
+  const handleGenerateAISubtasks = async () => {
+    if (!formData.title.trim()) {
+      setContextStatus({
+        type: 'error',
+        message: 'Please enter a task title before generating AI subtasks'
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const aiContext = await generateTaskContext(
+        formData.title,
+        formData.description,
+        formData.dueDate,
+        formData.recurringInterval
+      );
+
+      setFormData(prev => ({
+        ...prev,
+        subtasks: aiContext.subtasks,
+        imageUrl: aiContext.imageUrl,
+        motivationalQuote: aiContext.motivationalQuote
+      }));
+    } catch (error) {
+      console.error('Error generating AI subtasks:', error);
+      setContextStatus({
+        type: 'error',
+        message: 'Failed to generate AI subtasks. Please try again or add them manually.'
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleAddManualSubtask = () => {
+    if (!newManualSubtaskText.trim()) return;
+
+    const newSubtask: Subtask = {
+      id: `manual-subtask-${Date.now()}`,
+      text: newManualSubtaskText.trim(),
+      completed: false
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      subtasks: [...prev.subtasks, newSubtask]
+    }));
+
+    setNewManualSubtaskText('');
+  };
+
+  const handleDeleteSubtask = (subtaskId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      subtasks: prev.subtasks.filter(subtask => subtask.id !== subtaskId)
+    }));
+  };
+
+  const handleClearAllSubtasks = () => {
+    setFormData(prev => ({
+      ...prev,
+      subtasks: []
+    }));
+    setContextStatus({ type: null, message: '' });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -137,26 +205,42 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     }
 
     try {
-      // Generate AI task context
-      const taskContext = await generateTaskContext(
-        formData.title,
-        formData.description,
-        formData.dueDate,
-        formData.recurringInterval
-      );
+      // If no subtasks, image, or quote are set, generate them
+      let finalSubtasks = formData.subtasks;
+      let finalImageUrl = formData.imageUrl;
+      let finalMotivationalQuote = formData.motivationalQuote;
+
+      if (finalSubtasks.length === 0 || !finalImageUrl || !finalMotivationalQuote) {
+        const taskContext = await generateTaskContext(
+          formData.title,
+          formData.description,
+          formData.dueDate,
+          formData.recurringInterval
+        );
+
+        if (finalSubtasks.length === 0) {
+          finalSubtasks = taskContext.subtasks;
+        }
+        if (!finalImageUrl) {
+          finalImageUrl = taskContext.imageUrl;
+        }
+        if (!finalMotivationalQuote) {
+          finalMotivationalQuote = taskContext.motivationalQuote;
+        }
+      }
 
       const newTask: Omit<Task, 'id' | 'createdAt'> = {
         title: formData.title.trim(),
-        description: formData.description.trim() || `Complete: ${formData.title.trim()}`, // Default description
+        description: formData.description.trim() || `Complete: ${formData.title.trim()}`,
         priority: formData.priority,
         category: formData.category,
         dueDate: formData.noDueDate ? '' : formData.dueDate,
         estimatedTime: formData.estimatedTime,
         completed: false,
         likes: 0,
-        subtasks: taskContext.subtasks,
-        imageUrl: taskContext.imageUrl,
-        motivationalQuote: taskContext.motivationalQuote,
+        subtasks: finalSubtasks,
+        imageUrl: finalImageUrl,
+        motivationalQuote: finalMotivationalQuote,
         isRecurring: formData.isRecurring,
         recurringInterval: formData.isRecurring 
           ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
@@ -168,7 +252,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     } catch (error) {
       console.error('Error creating task:', error);
       // Still submit the task even if context generation fails
-      const fallbackSubtasks = [
+      const fallbackSubtasks = formData.subtasks.length > 0 ? formData.subtasks : [
         { id: `fallback-${Date.now()}-0`, text: 'Plan and prepare for the task', completed: false },
         { id: `fallback-${Date.now()}-1`, text: `Complete: ${formData.title.trim()}`, completed: false },
         { id: `fallback-${Date.now()}-2`, text: 'Review and finalize', completed: false }
@@ -184,8 +268,8 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
         completed: false,
         likes: 0,
         subtasks: fallbackSubtasks,
-        imageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
-        motivationalQuote: 'Every step forward is progress.',
+        imageUrl: formData.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`,
+        motivationalQuote: formData.motivationalQuote || 'Every step forward is progress.',
         isRecurring: formData.isRecurring,
         recurringInterval: formData.isRecurring 
           ? (formData.recurringInterval === 'custom' ? customInterval : formData.recurringInterval)
@@ -377,6 +461,110 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             </div>
           </div>
 
+          {/* Subtasks Section */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-white/90 text-sm font-medium font-general-sans">
+                Subtasks ({formData.subtasks.length})
+              </label>
+              {formData.subtasks.length > 0 && (
+                <motion.button
+                  type="button"
+                  className="text-red-400 hover:text-red-300 text-xs font-medium font-supreme"
+                  onClick={handleClearAllSubtasks}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  Clear All
+                </motion.button>
+              )}
+            </div>
+
+            {/* AI Generation Button */}
+            <motion.button
+              type="button"
+              disabled={!formData.title.trim() || isGeneratingAI}
+              className="w-full mb-4 py-3 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-xl border border-purple-500/30 text-white font-medium flex items-center justify-center space-x-2 hover:from-purple-500/30 hover:to-pink-500/30 focus:outline-none focus:ring-2 focus:ring-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed font-supreme"
+              onClick={handleGenerateAISubtasks}
+              whileHover={!formData.title.trim() || isGeneratingAI ? {} : { scale: 1.02 }}
+              whileTap={!formData.title.trim() || isGeneratingAI ? {} : { scale: 0.98 }}
+            >
+              {isGeneratingAI ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Generating AI Subtasks...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-5 h-5" />
+                  <span>Generate Subtasks with AI</span>
+                </>
+              )}
+            </motion.button>
+
+            {/* Manual Subtask Input */}
+            <div className="flex space-x-2 mb-4">
+              <input
+                type="text"
+                value={newManualSubtaskText}
+                onChange={(e) => setNewManualSubtaskText(e.target.value)}
+                className="flex-1 px-4 py-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-general-sans"
+                placeholder="Add a subtask manually..."
+                onKeyPress={(e) => e.key === 'Enter' && e.preventDefault()}
+                onKeyDown={(e) => e.key === 'Enter' && handleAddManualSubtask()}
+              />
+              <motion.button
+                type="button"
+                onClick={handleAddManualSubtask}
+                disabled={!newManualSubtaskText.trim()}
+                className="px-4 py-3 bg-green-500/20 text-green-300 rounded-xl border border-green-500/30 hover:bg-green-500/30 disabled:opacity-50 disabled:cursor-not-allowed font-supreme"
+                whileHover={!newManualSubtaskText.trim() ? {} : { scale: 1.05 }}
+                whileTap={!newManualSubtaskText.trim() ? {} : { scale: 0.95 }}
+              >
+                <Plus className="w-5 h-5" />
+              </motion.button>
+            </div>
+
+            {/* Subtasks List */}
+            <AnimatePresence>
+              {formData.subtasks.length > 0 && (
+                <motion.div
+                  className="space-y-2 mb-4"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  {formData.subtasks.map((subtask, index) => (
+                    <motion.div
+                      key={subtask.id}
+                      className="flex items-center space-x-3 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <div className="w-6 h-6 rounded-full border-2 border-white/50 flex items-center justify-center">
+                        <span className="text-white/70 text-xs font-medium font-general-sans">{index + 1}</span>
+                      </div>
+                      <span className="flex-1 text-white/90 text-sm font-general-sans">
+                        {subtask.text}
+                      </span>
+                      <motion.button
+                        type="button"
+                        className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-300 hover:bg-red-500/30"
+                        onClick={() => handleDeleteSubtask(subtask.id)}
+                        whileHover={{ scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </motion.button>
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
           {/* Recurring Task Toggle */}
           <div>
             <label htmlFor="task-recurring" className="flex items-center space-x-3 cursor-pointer">
@@ -535,15 +723,15 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
           {/* Submit Button */}
           <motion.button
             type="submit"
-            disabled={!formData.title.trim() || isGeneratingContext}
+            disabled={!formData.title.trim() || isGeneratingAI}
             className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
-            whileHover={!formData.title.trim() || isGeneratingContext ? {} : { scale: 1.02 }}
-            whileTap={!formData.title.trim() || isGeneratingContext ? {} : { scale: 0.98 }}
+            whileHover={!formData.title.trim() || isGeneratingAI ? {} : { scale: 1.02 }}
+            whileTap={!formData.title.trim() || isGeneratingAI ? {} : { scale: 0.98 }}
           >
-            {isGeneratingContext ? (
+            {isGeneratingAI ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Generating AI Context...</span>
+                <span>Creating Task...</span>
               </>
             ) : (
               <>
@@ -560,7 +748,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             </p>
             <div className="flex items-center justify-center space-x-1 text-purple-300/70 text-xs">
               <Sparkles className="w-3 h-3" />
-              <span className="font-general-sans">AI will automatically generate image, quote, and subtasks for you</span>
+              <span className="font-general-sans">AI will automatically generate missing context when you create the task</span>
             </div>
           </div>
         </form>
