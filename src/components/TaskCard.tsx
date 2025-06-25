@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Calendar, Target, Zap, Plus, Check, X, ChevronDown, Lock, Sparkles } from 'lucide-react';
+import { Clock, Calendar, Target, Zap, Plus, Check, X, ChevronDown, Lock } from 'lucide-react';
 import { Task } from '../types/task';
 import { shouldDisplayDueDate } from '../utils/dateUtils';
 
@@ -206,10 +206,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             <div className="flex items-center justify-center space-x-3">
               <div className="flex items-center space-x-2">
                 <span className="font-medium text-sm sm:text-base">Subtasks</span>
-                <div className="flex items-center space-x-1 px-2 py-0.5 bg-purple-500/20 rounded-full border border-purple-500/30">
-                  <Sparkles className="w-3 h-3 text-purple-300" />
-                  <span className="text-xs text-purple-300 font-medium">AI</span>
-                </div>
               </div>
               <motion.span 
                 className="text-xs sm:text-sm text-white/60 font-general-sans"
