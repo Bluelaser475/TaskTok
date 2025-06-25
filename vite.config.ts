@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
-  root: '.',
   plugins: [
     react(),
     VitePWA({
@@ -34,6 +33,11 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      input: 'index.html'
+    }
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
