@@ -757,25 +757,25 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
                 type="button"
                 onClick={handleGenerateAISubtasks}
                 disabled={isGeneratingAI || !formData.title.trim()}
-                className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-4 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={!isGeneratingAI && formData.title.trim() ? { scale: 1.02 } : {}}
                 whileTap={!isGeneratingAI && formData.title.trim() ? { scale: 0.98 } : {}}
               >
                 {isGeneratingAI ? (
                   <>
                     <Loader2 className="w-5 h-5 animate-spin" />
-                    <span>Generating With AI...</span>
+                    <span>Generating with AI...</span>
                   </>
                 ) : (
                   <>
                     <Wand2 className="w-5 h-5" />
-                    <span>Generate With AI</span>
+                    <span>Generate with AI</span>
                   </>
                 )}
               </motion.button>
               
               <p className="text-white/60 text-xs text-center font-general-sans">
-                AI will generate subtasks, motivational quotes, and visual inspiration
+                AI will generate subtasks and motivation!
               </p>
             </div>
 
@@ -805,8 +805,8 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               <span>Create Task</span>
             </motion.button>
 
-            {/* Helper Text */}
-            <div className="text-center space-y-1">
+            {/* Helper Text - Reduced spacing */}
+            <div className="text-center space-y-1 pt-2">
               <p className="text-white/50 text-xs font-general-sans">
                 Only task title is required. All other fields are optional with smart defaults.
               </p>
