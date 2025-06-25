@@ -63,29 +63,8 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   };
 
   return (
-    <motion.div
-      className="relative min-h-screen w-full overflow-hidden snap-start flex items-center justify-center"
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ 
-        opacity: 1, 
-        y: 0,
-        scale: task.completed ? [1, 1.02, 1] : 1,
-        boxShadow: task.completed 
-          ? [
-              '0 0 0 rgba(34, 197, 94, 0)',
-              '0 0 30px rgba(34, 197, 94, 0.4)',
-              '0 0 0 rgba(34, 197, 94, 0)'
-            ]
-          : '0 0 0 rgba(34, 197, 94, 0)'
-      }}
-      exit={{ opacity: 0, y: -50 }}
-      transition={{ 
-        duration: 0.5,
-        scale: { duration: 1.2, times: [0, 0.5, 1] },
-        boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
-      }}
-    >
-      {/* Background Gradient - Fixed for mobile */}
+    <div className="relative h-full w-full flex items-center justify-center">
+      {/* Background Gradient */}
       <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-95`} />
       
       {/* Glass Overlay */}
@@ -402,6 +381,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           )}
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -43,20 +43,58 @@ function App() {
   const [showTaskList, setShowTaskList] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<'up' | 'down' | null>(null);
 
   const currentTask = tasks[currentTaskIndex];
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Desktop wheel event handler for task navigation
+  useEffect(() => {
+    const handleWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      
+      // Debounce wheel events
+      const now = Date.now();
+      if (window.lastWheelTime && now - window.lastWheelTime < 300) return;
+      window.lastWheelTime = now;
+
+      if (tasks.length > 0) {
+        if (e.deltaY > 0) {
+          // Scrolling down - next task
+          setSwipeDirection('up');
+          const nextIndex = (currentTaskIndex + 1) % tasks.length;
+          setCurrentTaskIndex(nextIndex);
+        } else if (e.deltaY < 0) {
+          // Scrolling up - previous task
+          setSwipeDirection('down');
+          const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
+          setCurrentTaskIndex(prevIndex);
+        }
+      }
+    };
+
+    const container = containerRef.current;
+    if (container && !showTaskList && !showTaskForm && !showAuthForm) {
+      container.addEventListener('wheel', handleWheel, { passive: false });
+      return () => {
+        container.removeEventListener('wheel', handleWheel);
+      };
+    }
+  }, [currentTaskIndex, tasks.length, showTaskList, showTaskForm, showAuthForm]);
 
   // Swipe handlers for mobile navigation
   const swipeHandlers = useSwipe({
     onSwipeUp: () => {
       if (tasks.length > 0) {
+        setSwipeDirection('up');
         const nextIndex = (currentTaskIndex + 1) % tasks.length;
         setCurrentTaskIndex(nextIndex);
       }
     },
     onSwipeDown: () => {
       if (tasks.length > 0) {
+        setSwipeDirection('down');
         const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
         setCurrentTaskIndex(prevIndex);
       }
@@ -237,7 +275,11 @@ function App() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black" {...swipeHandlers}>
+    <div 
+      ref={containerRef}
+      className="relative h-screen overflow-hidden bg-black" 
+      {...swipeHandlers}
+    >
       {/* Stats Bar - Always visible */}
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
@@ -274,13 +316,22 @@ function App() {
             <motion.div
               key={currentTask.id}
               className="h-full w-full absolute inset-0"
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
-              transition={{ 
-                duration: 0.4,
-                ease: [0.4, 0.0, 0.2, 1]
+              initial={{ 
+                opacity: 0, 
+                y: swipeDirection === 'up' ? '100%' : swipeDirection === 'down' ? '-100%' : 50 
               }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ 
+                opacity: 0, 
+                y: swipeDirection === 'up' ? '-100%' : swipeDirection === 'down' ? '100%' : -50 
+              }}
+              transition={{ 
+                type: 'spring',
+                stiffness: 300,
+                damping: 30,
+                mass: 1
+              }}
+              onAnimationComplete={() => setSwipeDirection(null)}
             >
               <TaskCard
                 task={currentTask}
