@@ -353,7 +353,7 @@ function App() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black" {...swipeHandlers}>
+    <div className="relative h-screen overflow-hidden bg-black mobile-height" {...swipeHandlers}>
       {/* Stats Bar - Always visible */}
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
@@ -383,18 +383,19 @@ function App() {
         </motion.div>
       )}
 
-      {/* Main Task Display with Infinite Scroll Navigation */}
+      {/* Main Task Display with Infinite Scroll Navigation - Fixed positioning for fullscreen */}
       {!showTaskList && tasks.length > 0 && (
         <div 
           ref={taskContainerRef}
-          className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-hide"
+          className="absolute top-[60px] bottom-[80px] sm:top-[76px] sm:bottom-[70px] left-0 right-0 overflow-y-auto snap-y snap-mandatory scrollbar-hide mobile-scroll"
           style={{ 
             scrollSnapType: 'y mandatory',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
           }}
         >
           {renderedTasks.map((task, index) => (
-            <div key={`${task.id}-${index}`} className="h-full snap-start" style={{ scrollSnapAlign: 'start' }}>
+            <div key={`${task.id}-${index}`} className="h-full snap-start snap-item" style={{ scrollSnapAlign: 'start' }}>
               <TaskCard
                 task={task}
                 onToggleSubtask={handleToggleSubtask}
@@ -408,7 +409,7 @@ function App() {
 
       {/* Task Counter - Bottom Left - Enhanced mobile spacing */}
       {!showTaskList && tasks.length > 0 && (
-        <div className="absolute bottom-20 left-4 sm:left-6 sm:bottom-6 safe-bottom">
+        <div className="absolute bottom-[80px] left-4 sm:left-6 sm:bottom-6 safe-bottom">
           <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 sm:px-4 sm:py-2 border border-white/20">
             <span className="text-white/90 text-sm font-medium font-general-sans">
               Task {currentTaskIndex + 1}/{tasks.length}
@@ -419,7 +420,7 @@ function App() {
 
       {/* Bottom Right Controls - Enhanced mobile spacing and positioning */}
       {!showTaskList && (
-        <div className="absolute bottom-20 right-4 sm:right-6 sm:bottom-6 flex space-x-3 safe-bottom">
+        <div className="absolute bottom-[80px] right-4 sm:right-6 sm:bottom-6 flex space-x-3 safe-bottom">
           {/* Refresh Button - only show for authenticated users */}
           {user && (
             <motion.button
