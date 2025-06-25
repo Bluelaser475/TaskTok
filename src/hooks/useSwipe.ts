@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 
 interface SwipeHandlers {
   onSwipeUp?: () => void;
@@ -8,27 +8,32 @@ interface SwipeHandlers {
 }
 
 export function useSwipe(handlers: SwipeHandlers) {
-  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
-  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
+  // Use refs instead of state to avoid re-renders and maintain stable references
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
 
   const minSwipeDistance = 50;
 
-  const onTouchStart = (e: TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart({
+  // Stable callback functions using useCallback with empty dependency array
+  const onTouchStart = useCallback((e: TouchEvent) => {
+    touchEndRef.current = null;
+    touchStartRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
-    });
-  };
+    };
+  }, []);
 
-  const onTouchMove = (e: TouchEvent) => {
-    setTouchEnd({
+  const onTouchMove = useCallback((e: TouchEvent) => {
+    touchEndRef.current = {
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
-    });
-  };
+    };
+  }, []);
 
-  const onTouchEnd = () => {
+  const onTouchEnd = useCallback(() => {
+    const touchStart = touchStartRef.current;
+    const touchEnd = touchEndRef.current;
+    
     if (!touchStart || !touchEnd) return;
 
     const distanceX = touchStart.x - touchEnd.x;
@@ -38,31 +43,37 @@ export function useSwipe(handlers: SwipeHandlers) {
     const isUpSwipe = distanceY > minSwipeDistance;
     const isDownSwipe = distanceY < -minSwipeDistance;
 
-    if (isUpSwipe && handlers.onSwipeUp) {
-      handlers.onSwipeUp();
+    // Prioritize vertical swipes over horizontal ones for task navigation
+    if (Math.abs(distanceY) > Math.abs(distanceX)) {
+      if (isUpSwipe && handlers.onSwipeUp) {
+        handlers.onSwipeUp();
+      } else if (isDownSwipe && handlers.onSwipeDown) {
+        handlers.onSwipeDown();
+      }
+    } else {
+      if (isLeftSwipe && handlers.onSwipeLeft) {
+        handlers.onSwipeLeft();
+      } else if (isRightSwipe && handlers.onSwipeRight) {
+        handlers.onSwipeRight();
+      }
     }
-    if (isDownSwipe && handlers.onSwipeDown) {
-      handlers.onSwipeDown();
-    }
-    if (isLeftSwipe && handlers.onSwipeLeft) {
-      handlers.onSwipeLeft();
-    }
-    if (isRightSwipe && handlers.onSwipeRight) {
-      handlers.onSwipeRight();
-    }
-  };
+  }, [handlers]);
 
+  // Add event listeners only once when component mounts
   useEffect(() => {
-    document.addEventListener('touchstart', onTouchStart);
-    document.addEventListener('touchmove', onTouchMove);
-    document.addEventListener('touchend', onTouchEnd);
+    const options = { passive: true };
+    
+    document.addEventListener('touchstart', onTouchStart, options);
+    document.addEventListener('touchmove', onTouchMove, options);
+    document.addEventListener('touchend', onTouchEnd, options);
 
     return () => {
       document.removeEventListener('touchstart', onTouchStart);
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     };
-  }, [touchStart, touchEnd]);
+  }, []); // Empty dependency array ensures this runs only once
 
+  // Return the handlers for manual attachment if needed (though not used in current implementation)
   return { onTouchStart, onTouchMove, onTouchEnd };
 }
