@@ -277,3 +277,44 @@ label {
     font-size: 18px;
   }
 }
+
+/* Smooth scrolling styles for Lenis */
+.task-feed-scroller {
+  position: relative;
+  overflow: hidden;
+}
+
+.task-feed-content {
+  position: relative;
+}
+
+.task-item {
+  position: relative;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hide scrollbars but keep functionality */
+.task-feed-scroller::-webkit-scrollbar {
+  display: none;
+}
+
+.task-feed-scroller {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Ensure smooth transitions */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize for touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .task-feed-scroller {
+    -webkit-overflow-scrolling: touch;
+  }
+}
