@@ -19,7 +19,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-d1-2', text: 'Identify top 3 priorities', completed: false },
       { id: 'sub-d1-3', text: 'Allocate time slots', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=plan',
+    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop',
     motivationalQuote: '💡 Start with your most challenging task first to build momentum!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -40,7 +40,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-d2-2', text: 'Find learning resources', completed: false },
       { id: 'sub-d2-3', text: 'Set a small learning goal', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=learn',
+    imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=512&h=512&fit=crop',
     motivationalQuote: '🎯 Consistency is key! Even 15 minutes a day can lead to significant progress.',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -61,7 +61,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-d3-2', text: 'Close your eyes', completed: false },
       { id: 'sub-d3-3', text: 'Focus on your breath', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=mindful',
+    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=512&h=512&fit=crop',
     motivationalQuote: '🧘‍♀️ A short break can boost your productivity and reduce stress. Try a 5-minute meditation!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -94,7 +94,7 @@ export function useLocalTasks() {
         { id: `local-subtask-${Date.now()}-1`, text: `Work on completing: ${taskData.title}`, completed: false },
         { id: `local-subtask-${Date.now()}-2`, text: 'Review and finalize the work', completed: false }
       ],
-      imageUrl: taskData.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`,
+      imageUrl: taskData.imageUrl || `https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop&random=${Date.now()}`,
       motivationalQuote: taskData.motivationalQuote || 'Every step forward is progress.'
     };
 

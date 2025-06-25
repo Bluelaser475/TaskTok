@@ -20,7 +20,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-1-2', text: 'Create your first real task', completed: false },
       { id: 'sub-auth-1-3', text: 'Complete a subtask to earn XP', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=welcome',
+    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop',
     motivationalQuote: '🎉 Welcome! Your tasks are now saved to your account and will sync across all your devices.',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -42,7 +42,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-2-3', text: 'Set up productivity apps', completed: false },
       { id: 'sub-auth-2-4', text: 'Create a distraction-free zone', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=workspace',
+    imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=512&h=512&fit=crop',
     motivationalQuote: '🏢 A well-organized workspace can boost your productivity by up to 25%!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -63,7 +63,7 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-3-2', text: 'Include 10 minutes of movement', completed: false },
       { id: 'sub-auth-3-3', text: 'Practice gratitude or meditation', completed: false },
     ],
-    imageUrl: 'https://picsum.photos/512/512?random=morning',
+    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=512&h=512&fit=crop',
     motivationalQuote: '🌅 A consistent morning routine can improve your mood and productivity throughout the day.',
     createdAt: new Date().toISOString(),
     isRecurring: true,
@@ -91,6 +91,7 @@ export function useSupabaseTasks(userId: string | undefined) {
     console.log('🔍 fetchTasks called with userId:', userId);
     if (!userId) {
       console.warn('⚠️ fetchTasks: userId is undefined, skipping fetch');
+      setLoading(false);
       return;
     }
 
@@ -153,6 +154,8 @@ export function useSupabaseTasks(userId: string | undefined) {
     } catch (err) {
       console.error('💥 Error in fetchTasks:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
+      // Show dummy tasks even on error for better UX
+      setTasks(dummyTasks);
     } finally {
       setLoading(false);
       console.log('✅ fetchTasks completed');
@@ -197,7 +200,7 @@ export function useSupabaseTasks(userId: string | undefined) {
       }
     } catch (err) {
       console.error('💥 Error in fetchStats:', err);
-      setError(err instanceof Error ? err.message : 'Failed to fetch stats');
+      // Don't set error for stats, just use defaults
     }
   }, [userId]);
 
@@ -215,32 +218,39 @@ export function useSupabaseTasks(userId: string | undefined) {
     try {
       console.log('💾 Starting task creation process...');
       
-      // Call the generate-task-context Edge Function
-      console.log('🎨 Calling generate-task-context Edge Function...');
-      const { data: contextData, error: contextError } = await supabase.functions.invoke('generate-task-context', {
-        body: {
-          taskName: taskData.title,
-          taskDetails: taskData.description,
-          dueDate: taskData.dueDate || undefined,
-          recurrence: taskData.recurringInterval || undefined
+      // Try to call the generate-task-context Edge Function, but don't fail if it doesn't work
+      let imageUrl = taskData.imageUrl || `https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop&random=${Date.now()}`;
+      let motivationalQuote = taskData.motivationalQuote || 'Every step forward is progress.';
+      let generatedSubtasks = taskData.subtasks.length > 0 
+        ? taskData.subtasks.map(st => st.text)
+        : [
+            'Plan and prepare for the task',
+            `Work on completing: ${taskData.title}`,
+            'Review and finalize the work'
+          ];
+
+      try {
+        console.log('🎨 Attempting to call generate-task-context Edge Function...');
+        const { data: contextData, error: contextError } = await supabase.functions.invoke('generate-task-context', {
+          body: {
+            taskName: taskData.title,
+            taskDetails: taskData.description,
+            dueDate: taskData.dueDate || undefined,
+            recurrence: taskData.recurringInterval || undefined
+          }
+        });
+
+        if (!contextError && contextData?.success) {
+          console.log('✅ Edge function response:', contextData);
+          imageUrl = contextData.imageUrl || imageUrl;
+          motivationalQuote = contextData.quote || motivationalQuote;
+          generatedSubtasks = contextData.subtasks || generatedSubtasks;
+        } else {
+          console.warn('⚠️ Edge function failed, using fallback values');
         }
-      });
-
-      if (contextError) {
-        console.error('❌ Edge function error:', contextError);
-        // Continue with fallback values instead of throwing
+      } catch (edgeError) {
+        console.warn('⚠️ Edge function not available, using fallback values:', edgeError);
       }
-
-      console.log('✅ Edge function response:', contextData);
-
-      // Use Edge Function results or fallback values
-      const imageUrl = contextData?.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`;
-      const motivationalQuote = contextData?.quote || 'Every step forward is progress.';
-      const generatedSubtasks = contextData?.subtasks || [
-        'Plan and prepare for the task',
-        `Work on completing: ${taskData.title}`,
-        'Review and finalize the work'
-      ];
 
       // Prepare task data for database
       const taskInsertData = {
@@ -641,7 +651,8 @@ export function useSupabaseTasks(userId: string | undefined) {
       fetchTasks();
       fetchStats();
     } else {
-      console.log('👤 No user, skipping data fetch');
+      console.log('👤 No user, setting loading to false');
+      setLoading(false);
     }
   }, [userId, fetchTasks, fetchStats]);
 

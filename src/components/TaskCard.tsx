@@ -28,6 +28,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [previousProgress, setPreviousProgress] = useState(0);
+  const [imageError, setImageError] = useState(false);
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
@@ -62,6 +63,9 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
     }
   };
 
+  // Fallback image URL
+  const fallbackImageUrl = 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop';
+
   return (
     <motion.div
       className="relative h-full w-full overflow-hidden snap-start flex items-center justify-center"
@@ -86,10 +90,23 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       }}
     >
       {/* Background Image */}
-      {task.imageUrl && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${task.imageUrl})` }}
+      {task.imageUrl && !imageError && (
+        <img 
+          src={task.imageUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          onError={() => setImageError(true)}
+          loading="lazy"
+        />
+      )}
+      
+      {/* Fallback Background Image */}
+      {(!task.imageUrl || imageError) && (
+        <img 
+          src={fallbackImageUrl}
+          alt=""
+          className="absolute inset-0 w-full h-full object-cover"
+          loading="lazy"
         />
       )}
       
@@ -98,20 +115,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       
       {/* Glass Overlay */}
       <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
-
-      {/* Bolt Badge - Positioned relative to task card */}
-      <a 
-        href="https://bolt.new" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="absolute top-[80px] right-4 z-30"
-      >
-        <img 
-          src="/white_circle_360x360 copy.png" 
-          alt="Powered by Bolt.new" 
-          className="w-12 h-12 rounded-full object-cover"
-        />
-      </a>
 
       {/* Enhanced Progress Bar at Top with Smooth Animation */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
@@ -164,7 +167,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           </div>
 
           {/* Conditional Due Date/Time Display */}
-          {showDueDate && (
+          {showDueDate && task.dueDate && (
             <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-4 sm:mb-6 font-general-sans">
               <div className="flex items-center space-x-1">
                 <Calendar className="w-4 h-4" />
