@@ -292,6 +292,7 @@ function App() {
                 damping: 30,
                 mass: 1
               }}
+              onAnimationComplete={() => setSwipeDirection(null)}
             >
               <TaskCard
                 task={currentTask}
