@@ -33,17 +33,12 @@ export function StatsBar({ stats, onTitleClick, onLoginClick }: StatsBarProps) {
 
   return (
     <motion.div
-      className="fixed top-0 left-0 right-0 z-40 bg-black/10 backdrop-blur-md border-b border-white/10"
+      className="fixed top-0 left-0 right-0 z-40 bg-black/20 backdrop-blur-md border-b border-white/10"
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ type: 'spring', stiffness: 300 }}
-      style={{
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        background: 'rgba(0, 0, 0, 0.1)',
-      }}
     >
-      <div className="px-4 py-3 sm:px-6 sm:py-4 safe-top">
+      <div className="px-4 py-3 sm:px-6 sm:py-4">
         <div className="grid grid-cols-3 items-center">
           {/* Left: XP and Level */}
           <div className="flex items-center space-x-2 justify-self-start">
@@ -51,20 +46,17 @@ export function StatsBar({ stats, onTitleClick, onLoginClick }: StatsBarProps) {
               <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-white/80" />
             </div>
             <div className="text-left">
-              <div className="text-white text-xs sm:text-sm font-medium leading-none font-general-sans drop-shadow-sm">{stats.totalXP} XP</div>
-              <div className="text-white/80 text-xs leading-none mt-0.5 font-general-sans drop-shadow-sm">Level {stats.level}</div>
+              <div className="text-white text-xs sm:text-sm font-medium leading-none font-general-sans">{stats.totalXP} XP</div>
+              <div className="text-white/60 text-xs leading-none mt-0.5 font-general-sans">Level {stats.level}</div>
             </div>
           </div>
 
           {/* Center: Title - Perfectly Centered */}
           <motion.button
-            className="text-xl sm:text-3xl font-bold text-white tracking-wide font-logo hover:text-white/90 transition-colors cursor-pointer justify-self-center drop-shadow-lg"
+            className="text-xl sm:text-3xl font-bold text-white tracking-wide font-logo hover:text-white/80 transition-colors cursor-pointer justify-self-center"
             onClick={onTitleClick}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            style={{
-              textShadow: '0 2px 4px rgba(0, 0, 0, 0.3)',
-            }}
           >
             TaskTok
           </motion.button>
@@ -99,19 +91,11 @@ export function StatsBar({ stats, onTitleClick, onLoginClick }: StatsBarProps) {
                   initial={{ strokeDashoffset: circumference }}
                   animate={{ strokeDashoffset }}
                   transition={{ duration: 0.8, ease: "easeOut" }}
-                  style={{
-                    filter: 'drop-shadow(0 1px 2px rgba(0, 0, 0, 0.3))',
-                  }}
                 />
               </svg>
               {/* Completed tasks count in center */}
               <div className="absolute inset-0 flex items-center justify-center">
-                <span 
-                  className="text-white text-xs sm:text-sm font-semibold font-general-sans"
-                  style={{
-                    textShadow: '0 1px 2px rgba(0, 0, 0, 0.5)',
-                  }}
-                >
+                <span className="text-white text-xs sm:text-sm font-semibold font-general-sans">
                   {stats.completedTasks}
                 </span>
               </div>
@@ -125,23 +109,15 @@ export function StatsBar({ stats, onTitleClick, onLoginClick }: StatsBarProps) {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 title="Sign Out"
-                style={{
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                }}
               >
                 <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
               </motion.button>
             ) : (
               <motion.button
                 onClick={handleAuthClick}
-                className="h-9 px-4 sm:h-11 sm:px-6 bg-gradient-to-r from-purple-500/80 to-pink-500/80 backdrop-blur-sm rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600/80 hover:to-pink-600/80 border border-white/20 font-supreme"
+                className="h-9 px-4 sm:h-11 sm:px-6 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                style={{
-                  backdropFilter: 'blur(10px)',
-                  WebkitBackdropFilter: 'blur(10px)',
-                }}
               >
                 <User className="w-3 h-3 sm:w-4 sm:h-4" />
                 <span className="text-xs sm:text-sm">Login</span>
