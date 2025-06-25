@@ -675,7 +675,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
                 value={newManualSubtaskText}
                 onChange={(e) => setNewManualSubtaskText(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addManualSubtask())}
-                placeholder="Add a subtask..."
+                placeholder="Add a subtask, or Generate with AI below..."
                 className="flex-1 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20 text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-purple-500/50 font-general-sans"
               />
               <motion.button
@@ -750,10 +750,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
             <p className="text-white/50 text-xs font-general-sans">
               Only task title is required. All other fields are optional with smart defaults.
             </p>
-            <div className="flex items-center justify-center space-x-1 text-purple-300/70 text-xs">
-              <Sparkles className="w-3 h-3" />
-              <span className="font-general-sans">AI will automatically generate image, quote, and subtasks for you</span>
-            </div>
           </div>
         </form>
       </motion.div>
