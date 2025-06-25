@@ -75,10 +75,9 @@ function App() {
         top: tasks.length * containerHeight,
         behavior: 'auto'
       });
-      setTimeout(() => {
-        setCurrentTaskIndex(tasks.length - 1);
-        isScrollingRef.current = false;
-      }, 10);
+      // Immediately update state without delay
+      setCurrentTaskIndex(tasks.length - 1);
+      isScrollingRef.current = false;
     } else if (renderedIndex === renderedTasks.length - 1) {
       // We're at the duplicated first task, jump to the real first task
       isScrollingRef.current = true;
@@ -86,10 +85,9 @@ function App() {
         top: containerHeight,
         behavior: 'auto'
       });
-      setTimeout(() => {
-        setCurrentTaskIndex(0);
-        isScrollingRef.current = false;
-      }, 10);
+      // Immediately update state without delay
+      setCurrentTaskIndex(0);
+      isScrollingRef.current = false;
     } else {
       // Normal navigation within actual tasks
       const actualIndex = renderedIndex - 1; // Adjust for the prepended duplicate
@@ -135,10 +133,14 @@ function App() {
 
     setCurrentTaskIndex(targetActualIndex);
 
-    // Reset scrolling flag after animation
-    setTimeout(() => {
+    // Reset scrolling flag - immediately for instant scrolls, with delay for smooth scrolls
+    if (smooth) {
+      setTimeout(() => {
+        isScrollingRef.current = false;
+      }, 500);
+    } else {
       isScrollingRef.current = false;
-    }, smooth ? 500 : 10);
+    }
   }, [tasks.length]);
 
   // Initialize scroll position to show the first real task
@@ -153,7 +155,7 @@ function App() {
         });
       }
     }
-  }, [tasks.length]);
+  }, [tasks.length, tasks]);
 
   // Handle TaskTok title click - return to first task
   const handleTitleClick = useCallback(() => {
