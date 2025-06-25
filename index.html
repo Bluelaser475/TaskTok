@@ -3,11 +3,43 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#8B5CF6" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="format-detection" content="telephone=no" />
     <title>TaskTok - Productivity Made Fun</title>
+    <style>
+      /* Prevent flash of unstyled content and ensure proper mobile viewport */
+      html, body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+        /* Support for dynamic viewport units */
+        height: 100dvh;
+        /* iOS specific fixes */
+        -webkit-text-size-adjust: 100%;
+        -webkit-tap-highlight-color: transparent;
+      }
+      
+      /* iOS Safari specific fixes */
+      @supports (-webkit-touch-callout: none) {
+        html, body {
+          height: -webkit-fill-available;
+        }
+      }
+      
+      body {
+        overscroll-behavior: none;
+        touch-action: pan-x pan-y;
+      }
+      
+      #root {
+        height: 100%;
+        min-height: 100%;
+      }
+    </style>
   </head>
   <body class="overscroll-none">
     <div id="root"></div>
