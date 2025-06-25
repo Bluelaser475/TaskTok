@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, RefreshCw, List } from 'lucide-react';
 import { Task } from './types/task';
-import { TaskFeedScroller } from './components/TaskFeedScroller';
+import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { TaskListView } from './components/TaskListView';
 import { StatsBar } from './components/StatsBar';
@@ -12,7 +12,7 @@ import { useAuth } from './hooks/useAuth';
 import { useOnboarding } from './hooks/useOnboarding';
 import { useSupabaseTasks } from './hooks/useSupabaseTasks';
 import { useLocalTasks } from './hooks/useLocalTasks';
-import { useScrollState } from './hooks/useScrollState';
+import { useSwipe } from './hooks/useSwipe';
 
 function App() {
   const { user, loading: authLoading } = useAuth();
@@ -38,15 +38,146 @@ function App() {
     refetch
   } = user ? supabaseTasks : localTasks;
 
-  // Scroll state management
-  const { scrollState, updateScrollState, loading: scrollStateLoading } = useScrollState(user?.id);
-
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+  // Ref for the scrollable task container
+  const taskContainerRef = useRef<HTMLDivElement>(null);
+  const isScrollingRef = useRef(false);
+  const isInitializedRef = useRef(false);
+
+  const currentTask = tasks[currentTaskIndex];
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
+
+  // Create rendered tasks array for infinite scrolling
+  // Structure: [lastTask, ...actualTasks, firstTask]
+  const renderedTasks = tasks.length > 1 
+    ? [tasks[tasks.length - 1], ...tasks, tasks[0]]
+    : tasks;
+
+  // Handle scroll-based navigation with infinite loop detection
+  const handleScroll = useCallback(() => {
+    if (!taskContainerRef.current || isScrollingRef.current || tasks.length <= 1) return;
+
+    const container = taskContainerRef.current;
+    const scrollTop = container.scrollTop;
+    const containerHeight = container.clientHeight;
+    const renderedIndex = Math.round(scrollTop / containerHeight);
+    
+    // Check if we're in the duplicate regions and need to jump
+    if (renderedIndex === 0) {
+      // We're at the duplicated last task, jump to the real last task
+      isScrollingRef.current = true;
+      container.scrollTo({
+        top: tasks.length * containerHeight,
+        behavior: 'auto'
+      });
+      setTimeout(() => {
+        setCurrentTaskIndex(tasks.length - 1);
+        isScrollingRef.current = false;
+      }, 10);
+    } else if (renderedIndex === renderedTasks.length - 1) {
+      // We're at the duplicated first task, jump to the real first task
+      isScrollingRef.current = true;
+      container.scrollTo({
+        top: containerHeight,
+        behavior: 'auto'
+      });
+      setTimeout(() => {
+        setCurrentTaskIndex(0);
+        isScrollingRef.current = false;
+      }, 10);
+    } else {
+      // Normal navigation within actual tasks
+      const actualIndex = renderedIndex - 1; // Adjust for the prepended duplicate
+      if (actualIndex !== currentTaskIndex && actualIndex >= 0 && actualIndex < tasks.length) {
+        setCurrentTaskIndex(actualIndex);
+      }
+    }
+  }, [currentTaskIndex, tasks.length, renderedTasks.length]);
+
+  // Debounced scroll handler
+  useEffect(() => {
+    const container = taskContainerRef.current;
+    if (!container) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const debouncedHandleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleScroll, 100);
+    };
+
+    container.addEventListener('scroll', debouncedHandleScroll);
+    return () => {
+      container.removeEventListener('scroll', debouncedHandleScroll);
+      clearTimeout(timeoutId);
+    };
+  }, [handleScroll]);
+
+  // Scroll to specific task with infinite loop support
+  const scrollToTask = useCallback((targetActualIndex: number, smooth: boolean = true) => {
+    if (!taskContainerRef.current || tasks.length === 0) return;
+    
+    isScrollingRef.current = true;
+    const container = taskContainerRef.current;
+    const containerHeight = container.clientHeight;
+    
+    // Calculate the rendered index (add 1 for the prepended duplicate)
+    const renderedIndex = tasks.length > 1 ? targetActualIndex + 1 : targetActualIndex;
+    
+    container.scrollTo({
+      top: renderedIndex * containerHeight,
+      behavior: smooth ? 'smooth' : 'auto'
+    });
+
+    setCurrentTaskIndex(targetActualIndex);
+
+    // Reset scrolling flag after animation
+    setTimeout(() => {
+      isScrollingRef.current = false;
+    }, smooth ? 500 : 10);
+  }, [tasks.length]);
+
+  // Initialize scroll position to show the first real task
+  useEffect(() => {
+    if (tasks.length > 0 && taskContainerRef.current && !isInitializedRef.current) {
+      isInitializedRef.current = true;
+      // Set initial position to show the first real task (skip the duplicated last task)
+      if (tasks.length > 1) {
+        taskContainerRef.current.scrollTo({
+          top: taskContainerRef.current.clientHeight,
+          behavior: 'auto'
+        });
+      }
+    }
+  }, [tasks.length]);
+
+  // Handle TaskTok title click - return to first task
+  const handleTitleClick = useCallback(() => {
+    setCurrentTaskIndex(0);
+    scrollToTask(0);
+  }, [scrollToTask]);
+
+  // Swipe handlers for mobile with infinite looping
+  const swipeHandlers = useSwipe({
+    onSwipeUp: () => {
+      if (tasks.length > 0) {
+        const nextIndex = (currentTaskIndex + 1) % tasks.length;
+        setCurrentTaskIndex(nextIndex);
+        scrollToTask(nextIndex);
+      }
+    },
+    onSwipeDown: () => {
+      if (tasks.length > 0) {
+        const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
+        setCurrentTaskIndex(prevIndex);
+        scrollToTask(prevIndex);
+      }
+    }
+  });
 
   const handleToggleSubtask = useCallback((taskId: string, subtaskId: string) => {
     toggleSubtask(taskId, subtaskId);
@@ -66,7 +197,9 @@ function App() {
     
     createTask(newTaskData);
     setShowTaskForm(false);
-  }, [createTask, user, userCreatedTasks.length]);
+    setCurrentTaskIndex(0);
+    scrollToTask(0, false);
+  }, [createTask, user, userCreatedTasks.length, scrollToTask]);
 
   const handleUpdateTask = useCallback((taskId: string, updates: Partial<Task>) => {
     updateTask(taskId, updates);
@@ -74,7 +207,10 @@ function App() {
 
   const handleDeleteTask = useCallback((taskId: string) => {
     deleteTask(taskId);
-  }, [deleteTask]);
+    // Reset to first task after deletion
+    setCurrentTaskIndex(0);
+    setTimeout(() => scrollToTask(0, false), 100);
+  }, [deleteTask, scrollToTask]);
 
   const handleAddSubtask = useCallback((taskId: string, subtaskText: string) => {
     addSubtask(taskId, subtaskText);
@@ -91,26 +227,17 @@ function App() {
     refetch();
     setTimeout(() => {
       setIsRefreshing(false);
+      setCurrentTaskIndex(0);
+      scrollToTask(0, false);
     }, 1000);
-  }, [refetch, user]);
+  }, [refetch, user, scrollToTask]);
 
   const handleLoginClick = useCallback(() => {
     setShowAuthForm(true);
   }, []);
 
-  const handleTitleClick = useCallback(() => {
-    // Scroll to top of feed
-    if (tasks.length > 0) {
-      updateScrollState({
-        taskId: tasks[0].id,
-        offsetPercent: 0,
-        timestamp: Date.now()
-      });
-    }
-  }, [tasks, updateScrollState]);
-
   // Show loading screen while checking auth
-  if (authLoading || (user && scrollStateLoading)) {
+  if (authLoading) {
     return (
       <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <div className="text-center">
@@ -224,26 +351,70 @@ function App() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black">
+    <div className="relative h-screen overflow-hidden bg-black" {...swipeHandlers}>
       {/* Stats Bar - Always visible */}
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
-      {/* Main Task Feed with Infinite Scrolling */}
+      {/* Visual Progress Indicator - Left Side - Moved further from edge */}
+      {!showTaskList && tasks.length > 1 && (
+        <motion.div
+          className="fixed left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.5 }}
+        >
+          {tasks.map((_, index) => (
+            <motion.div
+              key={index}
+              className={`w-1 h-6 rounded-full transition-all duration-300 ${
+                index === currentTaskIndex 
+                  ? 'bg-white' 
+                  : 'bg-white/30'
+              }`}
+              animate={{
+                scale: index === currentTaskIndex ? 1.2 : 1,
+                opacity: index === currentTaskIndex ? 1 : 0.6
+              }}
+              transition={{ duration: 0.3 }}
+            />
+          ))}
+        </motion.div>
+      )}
+
+      {/* Main Task Display with Infinite Scroll Navigation */}
       {!showTaskList && tasks.length > 0 && (
-        <TaskFeedScroller
-          tasks={tasks}
-          userId={user?.id}
-          initialScrollState={scrollState || undefined}
-          onScrollStateChange={updateScrollState}
-          onToggleSubtask={handleToggleSubtask}
-          onCompleteTask={handleCompleteTask}
-          onAddSubtask={handleAddSubtask}
-        />
+        <div 
+          ref={taskContainerRef}
+          className="h-full overflow-y-auto snap-y snap-mandatory"
+          style={{ scrollSnapType: 'y mandatory' }}
+        >
+          {renderedTasks.map((task, index) => (
+            <div key={`${task.id}-${index}`} className="h-full snap-start" style={{ scrollSnapAlign: 'start' }}>
+              <TaskCard
+                task={task}
+                onToggleSubtask={handleToggleSubtask}
+                onCompleteTask={handleCompleteTask}
+                onAddSubtask={handleAddSubtask}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Task Counter - Bottom Left - Moved further from edge */}
+      {!showTaskList && tasks.length > 0 && (
+        <div className="absolute bottom-6 left-6 sm:left-8">
+          <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 sm:px-4 sm:py-2 border border-white/20">
+            <span className="text-white/90 text-sm font-medium font-general-sans">
+              Task {currentTaskIndex + 1}/{tasks.length}
+            </span>
+          </div>
+        </div>
       )}
 
       {/* Bottom Right Controls */}
       {!showTaskList && (
-        <div className="absolute bottom-6 right-4 sm:right-6 flex space-x-3 z-50">
+        <div className="absolute bottom-6 right-4 sm:right-6 flex space-x-3">
           {/* Refresh Button - only show for authenticated users */}
           {user && (
             <motion.button
