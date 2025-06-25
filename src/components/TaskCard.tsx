@@ -64,7 +64,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
 
   return (
     <motion.div
-      className="relative h-full w-full overflow-hidden snap-start flex items-center justify-center"
+      className="relative min-h-screen w-full overflow-hidden snap-start flex items-center justify-center"
       initial={{ opacity: 0, y: 50 }}
       animate={{ 
         opacity: 1, 
@@ -85,14 +85,14 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
       }}
     >
-      {/* Background Gradient - No images */}
+      {/* Background Gradient - Fixed for mobile */}
       <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-95`} />
       
       {/* Glass Overlay */}
       <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
 
       {/* Enhanced Progress Bar at Top with Smooth Animation */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
+      <div className="absolute top-0 left-0 right-0 z-10 h-1 bg-black/20">
         <motion.div
           className="h-full bg-gradient-to-r from-white to-yellow-300"
           initial={{ width: 0 }}
@@ -121,285 +121,286 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         )}
       </div>
 
-      {/* Centered Content Container with increased left padding to avoid scrollbar overlap */}
-      <div className="relative w-full max-w-md mx-auto px-4 py-8 pl-8 pr-4 sm:pl-10 sm:pr-8 sm:py-12 pt-[160px] pb-[120px]">
-        {/* Task Header */}
-        <motion.div 
-          className="text-center mb-8 sm:mb-12"
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          {/* Task Title - Large and Prominent */}
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6 leading-tight font-task-title">
-            {task.title}
-          </h1>
-
-          {/* Priority Indicator - Small, below title */}
-          <div className="flex items-center justify-center space-x-2 text-white/80 mb-4 sm:mb-6">
-            {priorityIcons[task.priority]}
-            <span className="text-sm font-medium capitalize font-general-sans">{task.priority} Priority</span>
-          </div>
-
-          {/* Conditional Due Date/Time Display */}
-          {showDueDate && task.dueDate && (
-            <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-4 sm:mb-6 font-general-sans">
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span>{new Date(task.dueDate).toLocaleDateString()}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <Clock className="w-4 h-4" />
-                <span>{task.estimatedTime}min</span>
-              </div>
-            </div>
-          )}
-        </motion.div>
-
-        {/* Motivational Quote - Helpful Tip Section */}
-        {task.motivationalQuote && (
+      {/* Content Container with better mobile spacing */}
+      <div className="relative w-full max-w-sm mx-auto px-4 py-8 sm:max-w-md sm:px-6 sm:py-12">
+        <div className="pt-16 pb-16 sm:pt-20 sm:pb-20 space-y-6 sm:space-y-8">
+          {/* Task Header */}
           <motion.div 
-            className="mb-8 sm:mb-12 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
+            className="text-center"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
           >
-            <p className="text-white/90 text-sm sm:text-base leading-relaxed font-general-sans">{task.motivationalQuote}</p>
-          </motion.div>
-        )}
+            {/* Task Title - Responsive sizing */}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-4 leading-tight break-words font-task-title">
+              {task.title}
+            </h1>
 
-        {/* View Subtasks Button - Centered Text */}
-        <motion.div
-          className="mb-6 sm:mb-8"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <motion.button
-            className="w-full p-3 sm:p-4 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 text-white/70 hover:text-white/90 hover:bg-white/10 transition-all duration-200 font-supreme"
-            onClick={() => setShowSubtasks(!showSubtasks)}
-            whileHover={{ scale: 1.01 }}
-            whileTap={{ scale: 0.99 }}
-          >
-            <div className="flex items-center justify-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium text-sm sm:text-base">Subtasks</span>
-              </div>
-              <motion.span 
-                className="text-xs sm:text-sm text-white/60 font-general-sans"
-                animate={completedSubtasks !== previousProgress ? {
-                  scale: [1, 1.2, 1],
-                  color: ['rgba(255,255,255,0.6)', 'rgba(34,197,94,0.8)', 'rgba(255,255,255,0.6)']
-                } : {}}
-                transition={{ duration: 0.6 }}
-              >
-                {completedSubtasks}/{task.subtasks.length}
-              </motion.span>
-              <motion.div
-                animate={{ rotate: showSubtasks ? 180 : 0 }}
-                transition={{ duration: 0.2 }}
-              >
-                <ChevronDown className="w-5 h-5" />
-              </motion.div>
+            {/* Priority Indicator */}
+            <div className="flex items-center justify-center space-x-2 text-white/80 mb-4 font-general-sans">
+              {priorityIcons[task.priority]}
+              <span className="text-sm font-medium capitalize">{task.priority} Priority</span>
             </div>
-          </motion.button>
 
-          {/* Subtasks List */}
-          <AnimatePresence>
-            {showSubtasks && (
-              <motion.div
-                className="mt-4 sm:mt-6 space-y-3"
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                {task.subtasks.map((subtask, index) => (
-                  <motion.div
-                    key={subtask.id}
-                    className="flex items-center space-x-3 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                  >
-                    <motion.button
-                      className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                        subtask.completed
-                          ? 'bg-green-500 border-green-500'
-                          : isDummyTask
-                          ? 'border-white/30 cursor-not-allowed'
-                          : 'border-white/50 hover:border-white/80'
-                      }`}
-                      onClick={() => handleToggleSubtask(subtask.id)}
-                      whileHover={isDummyTask ? {} : { scale: 1.1 }}
-                      whileTap={isDummyTask ? {} : { scale: 0.9 }}
-                      animate={subtask.completed ? {
-                        scale: [1, 1.3, 1],
-                        boxShadow: [
-                          '0 0 0 rgba(34, 197, 94, 0)',
-                          '0 0 15px rgba(34, 197, 94, 0.6)',
-                          '0 0 0 rgba(34, 197, 94, 0)'
-                        ]
-                      } : {}}
-                      transition={{ duration: 0.8 }}
-                      disabled={isDummyTask}
-                    >
-                      {subtask.completed && (
-                        <motion.div
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ type: 'spring', stiffness: 500 }}
-                        >
-                          <Check className="w-4 h-4 text-white" />
-                        </motion.div>
-                      )}
-                      {isDummyTask && !subtask.completed && (
-                        <Lock className="w-3 h-3 text-white/40" />
-                      )}
-                    </motion.button>
-                    
-                    <span
-                      className={`text-xs sm:text-sm flex-1 font-general-sans ${
-                        subtask.completed 
-                          ? 'text-white/60 line-through' 
-                          : isDummyTask
-                          ? 'text-white/70'
-                          : 'text-white/90'
-                      }`}
-                    >
-                      {subtask.text}
-                    </span>
-                  </motion.div>
-                ))}
-
-                {/* Add Subtask Input - Only for non-dummy tasks */}
-                <AnimatePresence>
-                  {!isDummyTask && (
-                    <>
-                      {isAddingSubtask ? (
-                        <motion.div
-                          className="flex space-x-2 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                        >
-                          <input
-                            type="text"
-                            value={newSubtaskText}
-                            onChange={(e) => setNewSubtaskText(e.target.value)}
-                            className="flex-1 bg-transparent text-white placeholder-white/50 focus:outline-none text-xs sm:text-sm font-general-sans"
-                            placeholder="Enter new subtask..."
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
-                            autoFocus
-                          />
-                          <motion.button
-                            className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-300 hover:bg-green-500/30"
-                            onClick={handleAddSubtask}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <Check className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-300 hover:bg-red-500/30"
-                            onClick={() => {
-                              setIsAddingSubtask(false);
-                              setNewSubtaskText('');
-                            }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <X className="w-4 h-4" />
-                          </motion.button>
-                        </motion.div>
-                      ) : (
-                        onAddSubtask && !task.completed && (
-                          <motion.button
-                            className="flex items-center justify-center space-x-2 p-3 sm:p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme"
-                            onClick={() => setIsAddingSubtask(true)}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span className="text-xs sm:text-sm">Add subtask</span>
-                          </motion.button>
-                        )
-                      )}
-                    </>
-                  )}
-                </AnimatePresence>
-              </motion.div>
+            {/* Conditional Due Date/Time Display */}
+            {showDueDate && task.dueDate && (
+              <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-4 font-general-sans">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>{new Date(task.dueDate).toLocaleDateString()}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <Clock className="w-4 h-4" />
+                  <span>{task.estimatedTime}min</span>
+                </div>
+              </div>
             )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Complete Task Button - Only for non-dummy tasks */}
-        {!isDummyTask && allSubtasksCompleted && !task.completed && (
-          <motion.button
-            className="w-full p-3 sm:p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl text-white font-semibold text-center font-supreme"
-            onClick={handleCompleteTask}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            Complete Task ✨
-          </motion.button>
-        )}
-
-        {/* Demo Task Call-to-Action */}
-        {isDummyTask && (
-          <motion.div
-            className="w-full p-3 sm:p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-          >
-            <motion.p
-              className="text-white/90 font-medium text-xs sm:text-sm font-general-sans"
-              animate={{ scale: [1, 1.01, 1] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            >
-              This is a Demo Task. Create tasks to unlock full functionality and see how TaskTok works.
-            </motion.p>
           </motion.div>
-        )}
 
-        {/* Enhanced Completed State */}
-        {task.completed && (
+          {/* Motivational Quote */}
+          {task.motivationalQuote && (
+            <motion.div 
+              className="p-4 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: 0.4 }}
+            >
+              <p className="text-white/90 text-sm leading-relaxed break-words font-general-sans">{task.motivationalQuote}</p>
+            </motion.div>
+          )}
+
+          {/* Subtasks Section */}
           <motion.div
-            className="w-full p-3 sm:p-4 bg-green-500/20 backdrop-blur-sm rounded-2xl border border-green-500/30 text-center"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ 
-              opacity: 1, 
-              scale: 1,
-              boxShadow: [
-                '0 0 0 rgba(34, 197, 94, 0)',
-                '0 0 25px rgba(34, 197, 94, 0.4)',
-                '0 0 0 rgba(34, 197, 94, 0)'
-              ]
-            }}
-            transition={{ 
-              delay: 0.8,
-              boxShadow: { duration: 2, times: [0, 0.5, 1] }
-            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
           >
-            <motion.p 
-              className="text-green-300 font-semibold text-xs sm:text-sm font-general-sans"
-              animate={{
-                scale: [1, 1.05, 1],
+            <motion.button
+              className="w-full p-4 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 text-white/70 hover:text-white/90 hover:bg-white/10 transition-all duration-200 font-supreme"
+              onClick={() => setShowSubtasks(!showSubtasks)}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
+            >
+              <div className="flex items-center justify-center space-x-3">
+                <div className="flex items-center space-x-2">
+                  <span className="font-medium text-base">Subtasks</span>
+                </div>
+                <motion.span 
+                  className="text-sm text-white/60 font-general-sans"
+                  animate={completedSubtasks !== previousProgress ? {
+                    scale: [1, 1.2, 1],
+                    color: ['rgba(255,255,255,0.6)', 'rgba(34,197,94,0.8)', 'rgba(255,255,255,0.6)']
+                  } : {}}
+                  transition={{ duration: 0.6 }}
+                >
+                  {completedSubtasks}/{task.subtasks.length}
+                </motion.span>
+                <motion.div
+                  animate={{ rotate: showSubtasks ? 180 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ChevronDown className="w-5 h-5" />
+                </motion.div>
+              </div>
+            </motion.button>
+
+            {/* Subtasks List */}
+            <AnimatePresence>
+              {showSubtasks && (
+                <motion.div
+                  className="mt-4 space-y-3"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {task.subtasks.map((subtask, index) => (
+                    <motion.div
+                      key={subtask.id}
+                      className="flex items-center space-x-3 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.1 }}
+                    >
+                      <motion.button
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                          subtask.completed
+                            ? 'bg-green-500 border-green-500'
+                            : isDummyTask
+                            ? 'border-white/30 cursor-not-allowed'
+                            : 'border-white/50 hover:border-white/80'
+                        }`}
+                        onClick={() => handleToggleSubtask(subtask.id)}
+                        whileHover={isDummyTask ? {} : { scale: 1.1 }}
+                        whileTap={isDummyTask ? {} : { scale: 0.9 }}
+                        animate={subtask.completed ? {
+                          scale: [1, 1.3, 1],
+                          boxShadow: [
+                            '0 0 0 rgba(34, 197, 94, 0)',
+                            '0 0 15px rgba(34, 197, 94, 0.6)',
+                            '0 0 0 rgba(34, 197, 94, 0)'
+                          ]
+                        } : {}}
+                        transition={{ duration: 0.8 }}
+                        disabled={isDummyTask}
+                      >
+                        {subtask.completed && (
+                          <motion.div
+                            initial={{ scale: 0 }}
+                            animate={{ scale: 1 }}
+                            transition={{ type: 'spring', stiffness: 500 }}
+                          >
+                            <Check className="w-4 h-4 text-white" />
+                          </motion.div>
+                        )}
+                        {isDummyTask && !subtask.completed && (
+                          <Lock className="w-3 h-3 text-white/40" />
+                        )}
+                      </motion.button>
+                      
+                      <span
+                        className={`text-sm flex-1 break-words font-general-sans ${
+                          subtask.completed 
+                            ? 'text-white/60 line-through' 
+                            : isDummyTask
+                            ? 'text-white/70'
+                            : 'text-white/90'
+                        }`}
+                      >
+                        {subtask.text}
+                      </span>
+                    </motion.div>
+                  ))}
+
+                  {/* Add Subtask Input - Only for non-dummy tasks */}
+                  <AnimatePresence>
+                    {!isDummyTask && (
+                      <>
+                        {isAddingSubtask ? (
+                          <motion.div
+                            className="flex space-x-2 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                          >
+                            <input
+                              type="text"
+                              value={newSubtaskText}
+                              onChange={(e) => setNewSubtaskText(e.target.value)}
+                              className="flex-1 bg-transparent text-white placeholder-white/50 focus:outline-none text-sm font-general-sans"
+                              placeholder="Enter new subtask..."
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
+                              autoFocus
+                            />
+                            <motion.button
+                              className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-300 hover:bg-green-500/30"
+                              onClick={handleAddSubtask}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <Check className="w-4 h-4" />
+                            </motion.button>
+                            <motion.button
+                              className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-300 hover:bg-red-500/30"
+                              onClick={() => {
+                                setIsAddingSubtask(false);
+                                setNewSubtaskText('');
+                              }}
+                              whileHover={{ scale: 1.1 }}
+                              whileTap={{ scale: 0.9 }}
+                            >
+                              <X className="w-4 h-4" />
+                            </motion.button>
+                          </motion.div>
+                        ) : (
+                          onAddSubtask && !task.completed && (
+                            <motion.button
+                              className="flex items-center justify-center space-x-2 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme"
+                              onClick={() => setIsAddingSubtask(true)}
+                              whileHover={{ scale: 1.01 }}
+                              whileTap={{ scale: 0.99 }}
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span className="text-sm">Add subtask</span>
+                            </motion.button>
+                          )
+                        )}
+                      </>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+          {/* Complete Task Button - Only for non-dummy tasks */}
+          {!isDummyTask && allSubtasksCompleted && !task.completed && (
+            <motion.button
+              className="w-full p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl text-white font-semibold text-center font-supreme"
+              onClick={handleCompleteTask}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              Complete Task ✨
+            </motion.button>
+          )}
+
+          {/* Demo Task Call-to-Action */}
+          {isDummyTask && (
+            <motion.div
+              className="w-full p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8 }}
+            >
+              <motion.p
+                className="text-white/90 font-medium text-sm break-words font-general-sans"
+                animate={{ scale: [1, 1.01, 1] }}
+                transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+              >
+                This is a Demo Task. Create tasks to unlock full functionality and see how TaskTok works.
+              </motion.p>
+            </motion.div>
+          )}
+
+          {/* Enhanced Completed State */}
+          {task.completed && (
+            <motion.div
+              className="w-full p-4 bg-green-500/20 backdrop-blur-sm rounded-2xl border border-green-500/30 text-center"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ 
+                opacity: 1, 
+                scale: 1,
+                boxShadow: [
+                  '0 0 0 rgba(34, 197, 94, 0)',
+                  '0 0 25px rgba(34, 197, 94, 0.4)',
+                  '0 0 0 rgba(34, 197, 94, 0)'
+                ]
               }}
               transition={{ 
-                duration: 1.5,
-                times: [0, 0.5, 1],
-                ease: "easeInOut"
+                delay: 0.8,
+                boxShadow: { duration: 2, times: [0, 0.5, 1] }
               }}
             >
-              ✅ Task Completed
-            </motion.p>
-          </motion.div>
-        )}
+              <motion.p 
+                className="text-green-300 font-semibold text-sm font-general-sans"
+                animate={{
+                  scale: [1, 1.05, 1],
+                }}
+                transition={{ 
+                  duration: 1.5,
+                  times: [0, 0.5, 1],
+                  ease: "easeInOut"
+                }}
+              >
+                ✅ Task Completed
+              </motion.p>
+            </motion.div>
+          )}
+        </div>
       </div>
     </motion.div>
   );
