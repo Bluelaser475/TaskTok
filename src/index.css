@@ -163,6 +163,10 @@ body {
   overscroll-behavior: none;
   /* Support for iOS safe areas */
   padding-bottom: env(safe-area-inset-bottom);
+  /* Prevent zoom on input focus for iOS */
+  -webkit-text-size-adjust: 100%;
+  /* Improve touch responsiveness */
+  touch-action: manipulation;
 }
 
 /* Mobile viewport fixes */
@@ -342,4 +346,46 @@ label {
 
 .safe-right {
   padding-right: env(safe-area-inset-right);
+}
+
+/* Improved mobile scrolling */
+.mobile-scroll {
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
+/* Fix for mobile viewport height issues */
+.mobile-height {
+  height: 100vh;
+  height: 100dvh;
+}
+
+@supports (-webkit-touch-callout: none) {
+  .mobile-height {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Snap scrolling improvements */
+.snap-container {
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+
+.snap-item {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* Touch improvements */
+.touch-manipulation {
+  touch-action: manipulation;
+}
+
+/* Prevent text selection on interactive elements */
+.no-select {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }

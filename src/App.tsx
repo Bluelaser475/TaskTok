@@ -387,8 +387,11 @@ function App() {
       {!showTaskList && tasks.length > 0 && (
         <div 
           ref={taskContainerRef}
-          className="h-full overflow-y-auto snap-y snap-mandatory"
-          style={{ scrollSnapType: 'y mandatory' }}
+          className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-hide"
+          style={{ 
+            scrollSnapType: 'y mandatory',
+            WebkitOverflowScrolling: 'touch'
+          }}
         >
           {renderedTasks.map((task, index) => (
             <div key={`${task.id}-${index}`} className="h-full snap-start" style={{ scrollSnapAlign: 'start' }}>
@@ -405,7 +408,7 @@ function App() {
 
       {/* Task Counter - Bottom Left - Enhanced mobile spacing */}
       {!showTaskList && tasks.length > 0 && (
-        <div className="absolute bottom-6 left-6 sm:left-8 sm:bottom-6" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="absolute bottom-20 left-4 sm:left-6 sm:bottom-6 safe-bottom">
           <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 sm:px-4 sm:py-2 border border-white/20">
             <span className="text-white/90 text-sm font-medium font-general-sans">
               Task {currentTaskIndex + 1}/{tasks.length}
@@ -416,10 +419,7 @@ function App() {
 
       {/* Bottom Right Controls - Enhanced mobile spacing and positioning */}
       {!showTaskList && (
-        <div 
-          className="absolute bottom-6 right-4 sm:right-6 sm:bottom-6 flex space-x-3"
-          style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-        >
+        <div className="absolute bottom-20 right-4 sm:right-6 sm:bottom-6 flex space-x-3 safe-bottom">
           {/* Refresh Button - only show for authenticated users */}
           {user && (
             <motion.button
