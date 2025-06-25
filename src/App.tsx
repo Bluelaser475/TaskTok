@@ -480,7 +480,10 @@ function App() {
             tasks={tasks}
             stats={stats}
             onClose={() => setShowTaskList(false)}
-            onAddTask={() => setShowTaskForm(true)}
+            onAddTask={() => {
+              setShowTaskList(false);
+              setShowTaskForm(true);
+            }}
             onUpdateTask={handleUpdateTask}
             onDeleteTask={handleDeleteTask}
             onAddSubtask={handleAddSubtask}

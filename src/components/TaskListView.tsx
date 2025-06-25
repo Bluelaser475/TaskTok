@@ -210,41 +210,41 @@ export function TaskListView({
       exit={{ x: '100%' }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
     >
-      {/* Redesigned Header with Three-Section Layout */}
-      <div className="bg-black/20 backdrop-blur-md border-b border-white/10 px-6 py-5 shadow-lg">
+      {/* Responsive Header with Three-Section Layout */}
+      <div className="bg-black/20 backdrop-blur-md border-b border-white/10 px-4 py-3 sm:px-6 sm:py-5 shadow-lg">
         <div className="flex items-center justify-between">
           {/* Left: Back Button */}
           <motion.button
-            className="w-11 h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 border border-white/20"
+            className="w-9 h-9 sm:w-11 sm:h-11 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white/80 hover:text-white hover:bg-white/20 border border-white/20"
             onClick={onClose}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
           >
-            <ArrowLeft className="w-6 h-6" />
+            <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </motion.button>
 
           {/* Center: New Task Button */}
           <motion.button
-            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
+            className="px-4 py-2 sm:px-8 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
             onClick={onAddTask}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <Plus className="w-5 h-5" />
-            <span>New Task</span>
+            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="text-sm sm:text-base">New Task</span>
           </motion.button>
 
           {/* Right: Stats Container */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2 sm:space-x-4">
             {/* XP Display */}
             <div className="flex items-center space-x-2">
-              <div className="w-11 h-11 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-white" />
+              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full flex items-center justify-center">
+                <Trophy className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-left">
+              <div className="text-left hidden sm:block">
                 <motion.div 
                   key={xpAnimationKey}
-                  className="text-white text-sm font-semibold leading-none font-general-sans"
+                  className="text-white text-xs sm:text-sm font-semibold leading-none font-general-sans"
                   animate={{
                     scale: [1, 1.1, 1],
                     color: ['rgba(255,255,255,1)', 'rgba(34,197,94,1)', 'rgba(255,255,255,1)']
@@ -269,23 +269,23 @@ export function TaskListView({
 
             {/* Streak Display */}
             <div className="flex items-center space-x-2">
-              <div className="w-11 h-11 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
-                <Zap className="w-6 h-6 text-white" />
+              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-purple-400 to-pink-500 rounded-full flex items-center justify-center">
+                <Zap className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
-              <div className="text-left">
-                <div className="text-white text-sm font-semibold leading-none font-general-sans">{stats.currentStreak}</div>
+              <div className="text-left hidden sm:block">
+                <div className="text-white text-xs sm:text-sm font-semibold leading-none font-general-sans">{stats.currentStreak}</div>
                 <div className="text-white/60 text-xs leading-none mt-0.5 font-general-sans">Streak</div>
               </div>
             </div>
 
             {/* Task Counter */}
             <div className="flex items-center space-x-2">
-              <div className="text-right">
-                <div className="text-white text-sm font-semibold leading-none font-general-sans">{pendingTasks.length} Active</div>
+              <div className="text-right hidden sm:block">
+                <div className="text-white text-xs sm:text-sm font-semibold leading-none font-general-sans">{pendingTasks.length} Active</div>
                 <div className="text-white/60 text-xs leading-none mt-0.5 font-general-sans">{completedTasks.length} Done</div>
               </div>
-              <div className="w-11 h-11 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
-                <Target className="w-6 h-6 text-white" />
+              <div className="w-9 h-9 sm:w-11 sm:h-11 bg-gradient-to-br from-green-400 to-emerald-500 rounded-full flex items-center justify-center">
+                <Target className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
             </div>
           </div>
