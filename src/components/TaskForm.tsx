@@ -47,6 +47,12 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       setIsGeneratingContext(true);
       setContextStatus({ type: null, message: '' });
 
+      // Check if Supabase URL is configured
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      if (!supabaseUrl) {
+        throw new Error('Supabase URL not configured');
+      }
+
       const { data, error } = await supabase.functions.invoke('generate-task-context', {
         body: {
           taskName: title.trim(),
@@ -58,12 +64,16 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
       if (error) {
         console.error('❌ Edge function error:', error);
+        // Check if it's a network/connection error
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          throw new Error('Unable to connect to AI service. Using fallback options.');
+        }
         throw new Error(error.message || 'Failed to generate task context');
       }
 
-      if (!data.success) {
-        console.error('❌ AI generation failed:', data.error);
-        throw new Error(data.error || 'AI task context generation failed');
+      if (!data || !data.success) {
+        console.error('❌ AI generation failed:', data?.error);
+        throw new Error(data?.error || 'AI task context generation failed');
       }
 
       console.log('✅ AI generated task context:', data);
@@ -86,9 +96,20 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
     } catch (error) {
       console.error('💥 Error generating AI task context:', error);
+      
+      // Determine the type of error for better user feedback
+      let errorMessage = 'Context generation failed, using basic defaults';
+      if (error instanceof Error) {
+        if (error.message.includes('Unable to connect')) {
+          errorMessage = 'AI service unavailable, using fallback options';
+        } else if (error.message.includes('not configured')) {
+          errorMessage = 'AI service not configured, using fallback options';
+        }
+      }
+      
       setContextStatus({
-        type: 'error',
-        message: 'Context generation failed, using basic defaults',
+        type: 'warning',
+        message: errorMessage,
         source: 'fallback'
       });
       
