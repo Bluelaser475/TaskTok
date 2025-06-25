@@ -804,13 +804,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               <Plus className="w-5 h-5" />
               <span>Create Task</span>
             </motion.button>
-
-            {/* Helper Text - Reduced spacing */}
-            <div className="text-center space-y-1 pt-2">
-              <p className="text-white/50 text-xs font-general-sans">
-                Only task title is required. All other fields are optional with smart defaults.
-              </p>
-            </div>
           </form>
         </div>
       </motion.div>
