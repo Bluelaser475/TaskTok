@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Clock, Calendar, Target, Zap, Plus, Check, X, ChevronDown, Lock } from 'lucide-react';
 import { Task } from '../types/task';
@@ -23,11 +23,13 @@ const priorityIcons = {
   low: <Clock className="w-5 h-5" />
 };
 
-export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }: TaskCardProps) {
+// Memoized TaskCard for better performance
+export const TaskCard = memo<TaskCardProps>(({ task, onToggleSubtask, onCompleteTask, onAddSubtask }) => {
   const [showSubtasks, setShowSubtasks] = useState(false);
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
-  const [previousProgress, setPreviousProgress] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
@@ -35,12 +37,15 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const showDueDate = shouldDisplayDueDate(task.dueDate, task.priority);
   const isDummyTask = task.id.startsWith('dummy-');
 
-  // Track progress changes for smooth animation
+  // Preload image for better performance
   useEffect(() => {
-    if (progress !== previousProgress) {
-      setPreviousProgress(progress);
+    if (task.imageUrl && !imageError) {
+      const img = new Image();
+      img.onload = () => setImageLoaded(true);
+      img.onerror = () => setImageError(true);
+      img.src = task.imageUrl;
     }
-  }, [progress, previousProgress]);
+  }, [task.imageUrl, imageError]);
 
   const handleAddSubtask = () => {
     if (newSubtaskText.trim() && onAddSubtask && !isDummyTask) {
@@ -65,31 +70,29 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   return (
     <motion.div
       className="relative h-full w-full overflow-hidden snap-start flex items-center justify-center"
-      initial={{ opacity: 0, y: 50 }}
+      initial={{ opacity: 0, y: 20 }}
       animate={{ 
         opacity: 1, 
         y: 0,
-        scale: task.completed ? [1, 1.02, 1] : 1,
-        boxShadow: task.completed 
-          ? [
-              '0 0 0 rgba(34, 197, 94, 0)',
-              '0 0 30px rgba(34, 197, 94, 0.4)',
-              '0 0 0 rgba(34, 197, 94, 0)'
-            ]
-          : '0 0 0 rgba(34, 197, 94, 0)'
+        scale: task.completed ? [1, 1.01, 1] : 1
       }}
-      exit={{ opacity: 0, y: -50 }}
       transition={{ 
-        duration: 0.5,
-        scale: { duration: 1.2, times: [0, 0.5, 1] },
-        boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
+        duration: 0.4,
+        scale: { duration: 1.2, times: [0, 0.5, 1] }
       }}
+      style={{ willChange: 'transform' }} // Optimize for animations
     >
-      {/* Background Image */}
-      {task.imageUrl && (
+      {/* Optimized Background Image with lazy loading */}
+      {task.imageUrl && !imageError && (
         <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${task.imageUrl})` }}
+          className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+            imageLoaded ? 'opacity-100' : 'opacity-0'
+          }`}
+          style={{ 
+            backgroundImage: imageLoaded ? `url(${task.imageUrl})` : undefined,
+            transform: 'translateZ(0)', // Force hardware acceleration
+            backfaceVisibility: 'hidden'
+          }}
         />
       )}
       
@@ -99,7 +102,35 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       {/* Glass Overlay */}
       <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
 
-      {/* Bolt Badge - Positioned relative to task card */}
+      {/* Enhanced Progress Bar */}
+      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
+        <motion.div
+          className="h-full bg-gradient-to-r from-white to-yellow-300"
+          initial={{ width: 0 }}
+          animate={{ width: `${progress}%` }}
+          transition={{ 
+            duration: 0.6, 
+            ease: "easeOut"
+          }}
+          style={{ willChange: 'width' }}
+        />
+        {progress === 100 && (
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400"
+            initial={{ opacity: 0 }}
+            animate={{ 
+              opacity: [0, 0.8, 0],
+              scale: [1, 1.02, 1]
+            }}
+            transition={{ 
+              duration: 1.2,
+              times: [0, 0.5, 1]
+            }}
+          />
+        )}
+      </div>
+
+      {/* Bolt Badge */}
       <a 
         href="https://bolt.new" 
         target="_blank" 
@@ -110,60 +141,28 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           src="/white_circle_360x360 copy.png" 
           alt="Powered by Bolt.new" 
           className="w-12 h-12 rounded-full object-cover"
+          loading="lazy"
         />
       </a>
 
-      {/* Enhanced Progress Bar at Top with Smooth Animation */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
-        <motion.div
-          className="h-full bg-gradient-to-r from-white to-yellow-300"
-          initial={{ width: 0 }}
-          animate={{ width: `${progress}%` }}
-          transition={{ 
-            duration: 0.8, 
-            ease: "easeOut",
-            type: "tween"
-          }}
-        />
-        {/* Completion Glow Effect */}
-        {progress === 100 && (
-          <motion.div
-            className="absolute inset-0 bg-gradient-to-r from-green-400 to-emerald-400"
-            initial={{ opacity: 0, scale: 1 }}
-            animate={{ 
-              opacity: [0, 0.8, 0],
-              scale: [1, 1.1, 1]
-            }}
-            transition={{ 
-              duration: 1.2,
-              times: [0, 0.5, 1],
-              ease: "easeInOut"
-            }}
-          />
-        )}
-      </div>
-
-      {/* Centered Content Container with increased left padding to avoid scrollbar overlap */}
+      {/* Main Content */}
       <div className="relative w-full max-w-md mx-auto px-4 py-8 pl-8 pr-4 sm:pl-10 sm:pr-8 sm:py-12 pt-[160px] pb-[120px]">
         {/* Task Header */}
         <motion.div 
           className="text-center mb-8 sm:mb-12"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
+          transition={{ delay: 0.1 }}
         >
-          {/* Task Title - Large and Prominent */}
           <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6 leading-tight font-task-title">
             {task.title}
           </h1>
 
-          {/* Priority Indicator - Small, below title */}
           <div className="flex items-center justify-center space-x-2 text-white/80 mb-4 sm:mb-6">
             {priorityIcons[task.priority]}
             <span className="text-sm font-medium capitalize font-general-sans">{task.priority} Priority</span>
           </div>
 
-          {/* Conditional Due Date/Time Display */}
           {showDueDate && (
             <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-4 sm:mb-6 font-general-sans">
               <div className="flex items-center space-x-1">
@@ -178,24 +177,26 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           )}
         </motion.div>
 
-        {/* Motivational Quote - Helpful Tip Section */}
+        {/* Motivational Quote */}
         {task.motivationalQuote && (
           <motion.div 
             className="mb-8 sm:mb-12 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.4 }}
+            transition={{ delay: 0.2 }}
           >
-            <p className="text-white/90 text-sm sm:text-base leading-relaxed font-general-sans">{task.motivationalQuote}</p>
+            <p className="text-white/90 text-sm sm:text-base leading-relaxed font-general-sans">
+              {task.motivationalQuote}
+            </p>
           </motion.div>
         )}
 
-        {/* View Subtasks Button - Centered Text */}
+        {/* Subtasks Section */}
         <motion.div
           className="mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
+          transition={{ delay: 0.3 }}
         >
           <motion.button
             className="w-full p-3 sm:p-4 bg-white/5 backdrop-blur-sm rounded-2xl border border-white/10 text-white/70 hover:text-white/90 hover:bg-white/10 transition-all duration-200 font-supreme"
@@ -204,12 +205,10 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             whileTap={{ scale: 0.99 }}
           >
             <div className="flex items-center justify-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium text-sm sm:text-base">Subtasks</span>
-              </div>
+              <span className="font-medium text-sm sm:text-base">Subtasks</span>
               <motion.span 
                 className="text-xs sm:text-sm text-white/60 font-general-sans"
-                animate={completedSubtasks !== previousProgress ? {
+                animate={completedSubtasks !== task.subtasks.filter(st => st.completed).length ? {
                   scale: [1, 1.2, 1],
                   color: ['rgba(255,255,255,0.6)', 'rgba(34,197,94,0.8)', 'rgba(255,255,255,0.6)']
                 } : {}}
@@ -255,15 +254,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                       onClick={() => handleToggleSubtask(subtask.id)}
                       whileHover={isDummyTask ? {} : { scale: 1.1 }}
                       whileTap={isDummyTask ? {} : { scale: 0.9 }}
-                      animate={subtask.completed ? {
-                        scale: [1, 1.3, 1],
-                        boxShadow: [
-                          '0 0 0 rgba(34, 197, 94, 0)',
-                          '0 0 15px rgba(34, 197, 94, 0.6)',
-                          '0 0 0 rgba(34, 197, 94, 0)'
-                        ]
-                      } : {}}
-                      transition={{ duration: 0.8 }}
                       disabled={isDummyTask}
                     >
                       {subtask.completed && (
@@ -294,68 +284,66 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                   </motion.div>
                 ))}
 
-                {/* Add Subtask Input - Only for non-dummy tasks */}
-                <AnimatePresence>
-                  {!isDummyTask && (
-                    <>
-                      {isAddingSubtask ? (
-                        <motion.div
-                          className="flex space-x-2 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
+                {/* Add Subtask */}
+                {!isDummyTask && (
+                  <AnimatePresence>
+                    {isAddingSubtask ? (
+                      <motion.div
+                        className="flex space-x-2 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                      >
+                        <input
+                          type="text"
+                          value={newSubtaskText}
+                          onChange={(e) => setNewSubtaskText(e.target.value)}
+                          className="flex-1 bg-transparent text-white placeholder-white/50 focus:outline-none text-xs sm:text-sm font-general-sans"
+                          placeholder="Enter new subtask..."
+                          onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
+                          autoFocus
+                        />
+                        <motion.button
+                          className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-300 hover:bg-green-500/30"
+                          onClick={handleAddSubtask}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
                         >
-                          <input
-                            type="text"
-                            value={newSubtaskText}
-                            onChange={(e) => setNewSubtaskText(e.target.value)}
-                            className="flex-1 bg-transparent text-white placeholder-white/50 focus:outline-none text-xs sm:text-sm font-general-sans"
-                            placeholder="Enter new subtask..."
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddSubtask()}
-                            autoFocus
-                          />
-                          <motion.button
-                            className="w-6 h-6 bg-green-500/20 rounded-full flex items-center justify-center text-green-300 hover:bg-green-500/30"
-                            onClick={handleAddSubtask}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <Check className="w-4 h-4" />
-                          </motion.button>
-                          <motion.button
-                            className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-300 hover:bg-red-500/30"
-                            onClick={() => {
-                              setIsAddingSubtask(false);
-                              setNewSubtaskText('');
-                            }}
-                            whileHover={{ scale: 1.1 }}
-                            whileTap={{ scale: 0.9 }}
-                          >
-                            <X className="w-4 h-4" />
-                          </motion.button>
-                        </motion.div>
-                      ) : (
-                        onAddSubtask && !task.completed && (
-                          <motion.button
-                            className="flex items-center justify-center space-x-2 p-3 sm:p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme"
-                            onClick={() => setIsAddingSubtask(true)}
-                            whileHover={{ scale: 1.01 }}
-                            whileTap={{ scale: 0.99 }}
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span className="text-xs sm:text-sm">Add subtask</span>
-                          </motion.button>
-                        )
-                      )}
-                    </>
-                  )}
-                </AnimatePresence>
+                          <Check className="w-4 h-4" />
+                        </motion.button>
+                        <motion.button
+                          className="w-6 h-6 bg-red-500/20 rounded-full flex items-center justify-center text-red-300 hover:bg-red-500/30"
+                          onClick={() => {
+                            setIsAddingSubtask(false);
+                            setNewSubtaskText('');
+                          }}
+                          whileHover={{ scale: 1.1 }}
+                          whileTap={{ scale: 0.9 }}
+                        >
+                          <X className="w-4 h-4" />
+                        </motion.button>
+                      </motion.div>
+                    ) : (
+                      onAddSubtask && !task.completed && (
+                        <motion.button
+                          className="flex items-center justify-center space-x-2 p-3 sm:p-4 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme"
+                          onClick={() => setIsAddingSubtask(true)}
+                          whileHover={{ scale: 1.01 }}
+                          whileTap={{ scale: 0.99 }}
+                        >
+                          <Plus className="w-4 h-4" />
+                          <span className="text-xs sm:text-sm">Add subtask</span>
+                        </motion.button>
+                      )
+                    )}
+                  </AnimatePresence>
+                )}
               </motion.div>
             )}
           </AnimatePresence>
         </motion.div>
 
-        {/* Complete Task Button - Only for non-dummy tasks */}
+        {/* Complete Task Button */}
         {!isDummyTask && allSubtasksCompleted && !task.completed && (
           <motion.button
             className="w-full p-3 sm:p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl text-white font-semibold text-center font-supreme"
@@ -364,31 +352,27 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             whileTap={{ scale: 0.98 }}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.4 }}
           >
             Complete Task ✨
           </motion.button>
         )}
 
-        {/* Demo Task Call-to-Action */}
+        {/* Demo Task CTA */}
         {isDummyTask && (
           <motion.div
             className="w-full p-3 sm:p-4 bg-gradient-to-r from-purple-500/20 to-pink-500/20 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
+            transition={{ delay: 0.4 }}
           >
-            <motion.p
-              className="text-white/90 font-medium text-xs sm:text-sm font-general-sans"
-              animate={{ scale: [1, 1.01, 1] }}
-              transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-            >
+            <p className="text-white/90 font-medium text-xs sm:text-sm font-general-sans">
               This is a Demo Task. Create tasks to unlock full functionality and see how TaskTok works.
-            </motion.p>
+            </p>
           </motion.div>
         )}
 
-        {/* Enhanced Completed State */}
+        {/* Completed State */}
         {task.completed && (
           <motion.div
             className="w-full p-3 sm:p-4 bg-green-500/20 backdrop-blur-sm rounded-2xl border border-green-500/30 text-center"
@@ -403,26 +387,18 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
               ]
             }}
             transition={{ 
-              delay: 0.8,
+              delay: 0.4,
               boxShadow: { duration: 2, times: [0, 0.5, 1] }
             }}
           >
-            <motion.p 
-              className="text-green-300 font-semibold text-xs sm:text-sm font-general-sans"
-              animate={{
-                scale: [1, 1.05, 1],
-              }}
-              transition={{ 
-                duration: 1.5,
-                times: [0, 0.5, 1],
-                ease: "easeInOut"
-              }}
-            >
+            <p className="text-green-300 font-semibold text-xs sm:text-sm font-general-sans">
               ✅ Task Completed
-            </motion.p>
+            </p>
           </motion.div>
         )}
       </div>
     </motion.div>
   );
-}
+});
+
+TaskCard.displayName = 'TaskCard';

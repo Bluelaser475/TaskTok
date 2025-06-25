@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import Lenis from '@studio-freight/lenis';
 import { Task } from '../types/task';
@@ -6,7 +6,7 @@ import { TaskCard } from './TaskCard';
 
 interface ScrollState {
   taskId: string;
-  offsetPercent: number; // Relative position within task (0-100)
+  offsetPercent: number;
   timestamp: number;
 }
 
@@ -20,6 +20,12 @@ interface Props {
   onAddSubtask: (taskId: string, subtaskText: string) => void;
 }
 
+// Virtualization constants
+const VIEWPORT_HEIGHT = typeof window !== 'undefined' ? window.innerHeight : 800;
+const TASK_HEIGHT = VIEWPORT_HEIGHT;
+const BUFFER_SIZE = 2; // Reduced from 3 for better performance
+const VISIBLE_RANGE = 3; // Number of tasks to render around current position
+
 export const TaskFeedScroller: React.FC<Props> = ({
   tasks,
   userId,
@@ -29,195 +35,192 @@ export const TaskFeedScroller: React.FC<Props> = ({
   onCompleteTask,
   onAddSubtask
 }) => {
-  // Configuration
-  const BUFFER_SIZE = 3; // Number of list copies for smooth looping
-  const SCROLL_DEBOUNCE_MS = 100;
-  const RESTORE_THRESHOLD_PX = 50; // Max jump distance for smooth restoration
-
   // Refs
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lenisRef = useRef<Lenis | null>(null);
-  const debounceTimeoutRef = useRef<NodeJS.Timeout>();
+  const scrollStateRef = useRef<ScrollState>();
+  const rafIdRef = useRef<number>();
+  const lastScrollTimeRef = useRef<number>(0);
 
   // State
-  const [visibleTasks, setVisibleTasks] = useState<Task[]>([]);
-  const [currentScrollState, setCurrentScrollState] = useState<ScrollState>();
+  const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
 
-  // Create virtual list with buffer copies for infinite scrolling
-  useEffect(() => {
-    if (tasks.length === 0) {
-      setVisibleTasks([]);
-      return;
+  // Memoized calculations for performance
+  const totalHeight = useMemo(() => tasks.length * TASK_HEIGHT, [tasks.length]);
+  
+  const visibleTaskIndices = useMemo(() => {
+    if (tasks.length === 0) return [];
+    
+    const startIndex = Math.max(0, currentTaskIndex - VISIBLE_RANGE);
+    const endIndex = Math.min(tasks.length - 1, currentTaskIndex + VISIBLE_RANGE);
+    
+    const indices = [];
+    for (let i = startIndex; i <= endIndex; i++) {
+      indices.push(i);
+    }
+    return indices;
+  }, [currentTaskIndex, tasks.length]);
+
+  // Optimized scroll handler using RAF
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || tasks.length === 0) return;
+
+    const now = performance.now();
+    if (now - lastScrollTimeRef.current < 16) return; // Throttle to ~60fps
+    lastScrollTimeRef.current = now;
+
+    if (rafIdRef.current) {
+      cancelAnimationFrame(rafIdRef.current);
     }
 
-    // Create buffered list for infinite scrolling
-    const bufferedList = Array(BUFFER_SIZE).fill(tasks).flat();
-    setVisibleTasks(bufferedList);
-  }, [tasks]);
+    rafIdRef.current = requestAnimationFrame(() => {
+      if (!scrollContainerRef.current) return;
 
-  // Initialize Lenis smooth scrolling
+      const scrollTop = scrollContainerRef.current.scrollTop;
+      setScrollY(scrollTop);
+
+      // Calculate current task index
+      const newTaskIndex = Math.floor(scrollTop / TASK_HEIGHT) % tasks.length;
+      const normalizedIndex = newTaskIndex < 0 ? tasks.length + newTaskIndex : newTaskIndex;
+      
+      if (normalizedIndex !== currentTaskIndex) {
+        setCurrentTaskIndex(normalizedIndex);
+      }
+
+      // Calculate offset percentage within current task
+      const taskScrollOffset = scrollTop % TASK_HEIGHT;
+      const offsetPercent = (taskScrollOffset / TASK_HEIGHT) * 100;
+
+      // Update scroll state
+      const currentTask = tasks[normalizedIndex];
+      if (currentTask) {
+        const newState: ScrollState = {
+          taskId: currentTask.id,
+          offsetPercent,
+          timestamp: now
+        };
+
+        // Only update if significantly different
+        if (!scrollStateRef.current || 
+            scrollStateRef.current.taskId !== newState.taskId ||
+            Math.abs(scrollStateRef.current.offsetPercent - newState.offsetPercent) > 5) {
+          scrollStateRef.current = newState;
+          onScrollStateChange(newState);
+        }
+      }
+
+      // Handle infinite scrolling with improved logic
+      handleInfiniteScrolling(scrollTop);
+    });
+  }, [tasks, currentTaskIndex, onScrollStateChange]);
+
+  // Optimized infinite scrolling
+  const handleInfiniteScrolling = useCallback((scrollTop: number) => {
+    if (!lenisRef.current || tasks.length <= 1) return;
+
+    const scrollHeight = scrollContainerRef.current?.scrollHeight || 0;
+    const clientHeight = scrollContainerRef.current?.clientHeight || 0;
+
+    // More efficient boundary detection
+    if (scrollTop < TASK_HEIGHT) {
+      // Near top, jump to bottom equivalent
+      const jumpTo = scrollTop + (tasks.length * TASK_HEIGHT);
+      lenisRef.current.scrollTo(jumpTo, { immediate: true });
+    } else if (scrollTop > scrollHeight - clientHeight - TASK_HEIGHT) {
+      // Near bottom, jump to top equivalent
+      const jumpTo = scrollTop - (tasks.length * TASK_HEIGHT);
+      lenisRef.current.scrollTo(jumpTo, { immediate: true });
+    }
+  }, [tasks.length]);
+
+  // Initialize Lenis with optimized settings
   useEffect(() => {
     if (!scrollContainerRef.current || tasks.length === 0) return;
+
+    // Clean up previous instance
+    if (lenisRef.current) {
+      lenisRef.current.destroy();
+    }
 
     const lenis = new Lenis({
       wrapper: scrollContainerRef.current,
       content: scrollContainerRef.current.firstElementChild as HTMLElement,
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      duration: 1.0, // Slightly faster for better responsiveness
+      easing: (t) => 1 - Math.pow(1 - t, 3), // Cubic ease-out for smoother feel
       direction: 'vertical',
       gestureDirection: 'vertical',
       smooth: true,
       smoothTouch: true,
-      touchMultiplier: 1.5,
-      wheelMultiplier: 0.8,
-      infinite: false // We'll handle infinite scrolling manually
+      touchMultiplier: 2.0, // Increased for better mobile response
+      wheelMultiplier: 1.0,
+      infinite: false,
+      autoResize: true
     });
 
     lenisRef.current = lenis;
 
-    // Animation frame loop
+    // Optimized RAF loop
+    let rafId: number;
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafId = requestAnimationFrame(raf);
     }
-    requestAnimationFrame(raf);
+    rafId = requestAnimationFrame(raf);
 
-    // Handle scroll events
+    // Add scroll listener
     lenis.on('scroll', handleScroll);
 
     return () => {
+      cancelAnimationFrame(rafId);
       lenis.destroy();
       lenisRef.current = null;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+      }
     };
-  }, [visibleTasks]);
+  }, [tasks.length, handleScroll]);
 
-  // Debounced scroll handler
-  const handleScroll = useCallback((e: any) => {
-    if (!scrollContainerRef.current || tasks.length === 0) return;
-
-    // Clear existing timeout
-    if (debounceTimeoutRef.current) {
-      clearTimeout(debounceTimeoutRef.current);
-    }
-
-    // Debounce the scroll state update
-    debounceTimeoutRef.current = setTimeout(() => {
-      const container = scrollContainerRef.current;
-      if (!container) return;
-
-      const scrollTop = e.scroll;
-      const containerHeight = container.clientHeight;
-      
-      // Find the currently visible task
-      const taskElements = container.querySelectorAll('[data-task-id]');
-      let currentTaskElement: Element | null = null;
-      let currentTaskId = '';
-      let offsetPercent = 0;
-
-      // Find the task that's most visible in the viewport
-      for (const element of taskElements) {
-        const rect = element.getBoundingClientRect();
-        const containerRect = container.getBoundingClientRect();
-        
-        // Check if this task is in the viewport
-        if (rect.top <= containerRect.top + containerHeight / 2 && 
-            rect.bottom >= containerRect.top + containerHeight / 2) {
-          currentTaskElement = element;
-          currentTaskId = element.getAttribute('data-task-id') || '';
-          
-          // Calculate offset percentage within the task
-          const taskTop = rect.top - containerRect.top;
-          const taskHeight = rect.height;
-          offsetPercent = Math.max(0, Math.min(100, ((containerHeight / 2 - taskTop) / taskHeight) * 100));
-          break;
-        }
-      }
-
-      if (currentTaskId && currentTaskId !== currentScrollState?.taskId) {
-        const newState: ScrollState = {
-          taskId: currentTaskId,
-          offsetPercent,
-          timestamp: Date.now()
-        };
-
-        setCurrentScrollState(newState);
-        onScrollStateChange(newState);
-      }
-
-      // Handle infinite scrolling
-      handleInfiniteScroll(scrollTop, container.scrollHeight, containerHeight);
-    }, SCROLL_DEBOUNCE_MS);
-  }, [tasks.length, currentScrollState, onScrollStateChange]);
-
-  // Handle infinite scrolling logic
-  const handleInfiniteScroll = useCallback((scrollTop: number, scrollHeight: number, containerHeight: number) => {
-    if (!lenisRef.current || tasks.length <= 1) return;
-
-    const taskHeight = containerHeight; // Assuming each task takes full viewport height
-    const totalTaskHeight = tasks.length * taskHeight;
-    
-    // Check if we're near the top (first buffer zone)
-    if (scrollTop < taskHeight) {
-      // Jump to the equivalent position in the last real section
-      const newScrollTop = scrollTop + totalTaskHeight;
-      lenisRef.current.scrollTo(newScrollTop, { immediate: true });
-    }
-    // Check if we're near the bottom (last buffer zone)
-    else if (scrollTop > scrollHeight - containerHeight - taskHeight) {
-      // Jump to the equivalent position in the first real section
-      const newScrollTop = scrollTop - totalTaskHeight;
-      lenisRef.current.scrollTo(newScrollTop, { immediate: true });
-    }
-  }, [tasks.length]);
-
-  // Restore scroll position on mount/login
+  // Restore scroll position with improved logic
   useEffect(() => {
-    if (!initialScrollState || !userId || !lenisRef.current || isInitialized) return;
+    if (!initialScrollState || !userId || !lenisRef.current || isInitialized || tasks.length === 0) return;
 
-    const targetTaskId = initialScrollState.taskId;
-    const targetTask = tasks.find(t => t.id === targetTaskId);
-    
+    const targetTask = tasks.find(t => t.id === initialScrollState.taskId);
     if (!targetTask) {
-      // Fallback: scroll to top
-      lenisRef.current.scrollTo(0, { immediate: true });
       setIsInitialized(true);
       return;
     }
 
-    // Find the target task element in the middle section (real tasks)
-    const targetElement = scrollContainerRef.current?.querySelector(
-      `[data-task-id="${targetTaskId}"][data-section="real"]`
-    );
-    
-    if (!targetElement) {
+    const targetIndex = tasks.findIndex(t => t.id === initialScrollState.taskId);
+    if (targetIndex === -1) {
       setIsInitialized(true);
       return;
     }
 
-    const targetRect = targetElement.getBoundingClientRect();
-    const containerRect = scrollContainerRef.current?.getBoundingClientRect();
-    
-    if (containerRect) {
-      const targetOffset = (targetRect.height * initialScrollState.offsetPercent) / 100;
-      const scrollPosition = targetElement.offsetTop + targetOffset - containerRect.height / 2;
-      
-      // Smooth scroll to the restored position
-      lenisRef.current.scrollTo(scrollPosition, {
-        duration: 0.8,
-        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t))
-      });
-    }
+    // Calculate scroll position
+    const baseScrollTop = targetIndex * TASK_HEIGHT;
+    const offsetWithinTask = (initialScrollState.offsetPercent / 100) * TASK_HEIGHT;
+    const targetScrollTop = baseScrollTop + offsetWithinTask;
 
-    setIsInitialized(true);
+    // Smooth scroll to position
+    setTimeout(() => {
+      if (lenisRef.current) {
+        lenisRef.current.scrollTo(targetScrollTop, {
+          duration: 0.6,
+          easing: (t) => 1 - Math.pow(1 - t, 3)
+        });
+      }
+      setIsInitialized(true);
+    }, 100);
   }, [initialScrollState, userId, tasks, isInitialized]);
 
-  // Auto-initialize if no initial scroll state
+  // Auto-initialize
   useEffect(() => {
-    if (!initialScrollState && !isInitialized && visibleTasks.length > 0) {
+    if (!initialScrollState && !isInitialized && tasks.length > 0) {
       setIsInitialized(true);
     }
-  }, [initialScrollState, isInitialized, visibleTasks.length]);
+  }, [initialScrollState, isInitialized, tasks.length]);
 
   if (tasks.length === 0) {
     return (
@@ -233,66 +236,52 @@ export const TaskFeedScroller: React.FC<Props> = ({
   return (
     <div 
       ref={scrollContainerRef}
-      className="task-feed-scroller h-screen overflow-hidden"
-      style={{ height: '100vh' }}
+      className="task-feed-scroller h-screen overflow-auto"
+      style={{ 
+        height: '100vh',
+        scrollSnapType: 'y mandatory',
+        WebkitOverflowScrolling: 'touch' // iOS momentum scrolling
+      }}
     >
-      <div className="task-feed-content">
-        {/* First buffer section (copy of last tasks) */}
-        {tasks.map((task, index) => (
-          <motion.div
-            key={`buffer-start-${task.id}-${index}`}
-            data-task-id={task.id}
-            data-section="buffer-start"
-            className="task-item h-screen snap-start"
-            style={{ height: '100vh' }}
-          >
-            <TaskCard
-              task={task}
-              onToggleSubtask={onToggleSubtask}
-              onCompleteTask={onCompleteTask}
-              onAddSubtask={onAddSubtask}
-            />
-          </motion.div>
-        ))}
+      <div 
+        className="task-feed-content relative"
+        style={{ height: totalHeight * BUFFER_SIZE }}
+      >
+        {/* Render only visible tasks for performance */}
+        {visibleTaskIndices.map((taskIndex) => {
+          const task = tasks[taskIndex];
+          if (!task) return null;
 
-        {/* Real tasks section */}
-        {tasks.map((task, index) => (
-          <motion.div
-            key={`real-${task.id}-${index}`}
-            data-task-id={task.id}
-            data-section="real"
-            className="task-item h-screen snap-start"
-            style={{ height: '100vh' }}
-            initial={{ opacity: 0, y: 50 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: index * 0.1 }}
-          >
-            <TaskCard
-              task={task}
-              onToggleSubtask={onToggleSubtask}
-              onCompleteTask={onCompleteTask}
-              onAddSubtask={onAddSubtask}
-            />
-          </motion.div>
-        ))}
+          // Calculate positions for infinite scrolling
+          const positions = [
+            taskIndex * TASK_HEIGHT, // Original position
+            (taskIndex + tasks.length) * TASK_HEIGHT, // First repeat
+            (taskIndex + tasks.length * 2) * TASK_HEIGHT // Second repeat
+          ];
 
-        {/* Last buffer section (copy of first tasks) */}
-        {tasks.map((task, index) => (
-          <motion.div
-            key={`buffer-end-${task.id}-${index}`}
-            data-task-id={task.id}
-            data-section="buffer-end"
-            className="task-item h-screen snap-start"
-            style={{ height: '100vh' }}
-          >
-            <TaskCard
-              task={task}
-              onToggleSubtask={onToggleSubtask}
-              onCompleteTask={onCompleteTask}
-              onAddSubtask={onAddSubtask}
-            />
-          </motion.div>
-        ))}
+          return positions.map((position, repeatIndex) => (
+            <motion.div
+              key={`${task.id}-${repeatIndex}-${taskIndex}`}
+              data-task-id={task.id}
+              className="task-item absolute w-full"
+              style={{ 
+                height: TASK_HEIGHT,
+                top: position,
+                scrollSnapAlign: 'start'
+              }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.3 }}
+            >
+              <TaskCard
+                task={task}
+                onToggleSubtask={onToggleSubtask}
+                onCompleteTask={onCompleteTask}
+                onAddSubtask={onAddSubtask}
+              />
+            </motion.div>
+          ));
+        })}
       </div>
     </div>
   );
