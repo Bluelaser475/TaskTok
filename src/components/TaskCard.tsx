@@ -63,28 +63,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   };
 
   return (
-    <motion.div
-      className="relative h-full w-full overflow-hidden snap-start flex items-center justify-center"
-      initial={{ opacity: 0, y: 50 }}
-      animate={{ 
-        opacity: 1, 
-        y: 0,
-        scale: task.completed ? [1, 1.02, 1] : 1,
-        boxShadow: task.completed 
-          ? [
-              '0 0 0 rgba(34, 197, 94, 0)',
-              '0 0 30px rgba(34, 197, 94, 0.4)',
-              '0 0 0 rgba(34, 197, 94, 0)'
-            ]
-          : '0 0 0 rgba(34, 197, 94, 0)'
-      }}
-      exit={{ opacity: 0, y: -50 }}
-      transition={{ 
-        duration: 0.5,
-        scale: { duration: 1.2, times: [0, 0.5, 1] },
-        boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
-      }}
-    >
+    <div className="relative h-full w-full overflow-hidden flex items-center justify-center">
       {/* Background Image */}
       {task.imageUrl && (
         <div 
@@ -114,7 +93,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       </a>
 
       {/* Enhanced Progress Bar at Top with Smooth Animation */}
-      <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
+      <div className="fixed top-[60px] sm:top-[76px] left-0 right-0 z-50 h-1 bg-black/20">
         <motion.div
           className="h-full bg-gradient-to-r from-white to-yellow-300"
           initial={{ width: 0 }}
@@ -143,29 +122,29 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         )}
       </div>
 
-      {/* Centered Content Container with increased left padding to avoid scrollbar overlap */}
-      <div className="relative w-full max-w-md mx-auto px-4 py-8 pl-8 pr-4 sm:pl-10 sm:pr-8 sm:py-12 pt-[160px] pb-[120px]">
+      {/* Centered Content Container with Mobile-Optimized Spacing */}
+      <div className="relative w-full max-w-md mx-auto px-4 py-8 sm:px-6 sm:py-12 h-full flex flex-col justify-center safe-top safe-bottom">
         {/* Task Header */}
         <motion.div 
-          className="text-center mb-8 sm:mb-12"
+          className="text-center mb-6 sm:mb-8"
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
         >
           {/* Task Title - Large and Prominent */}
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4 sm:mb-6 leading-tight font-task-title">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4 leading-tight font-task-title">
             {task.title}
           </h1>
 
           {/* Priority Indicator - Small, below title */}
-          <div className="flex items-center justify-center space-x-2 text-white/80 mb-4 sm:mb-6">
+          <div className="flex items-center justify-center space-x-2 text-white/80 mb-3 sm:mb-4">
             {priorityIcons[task.priority]}
             <span className="text-sm font-medium capitalize font-general-sans">{task.priority} Priority</span>
           </div>
 
           {/* Conditional Due Date/Time Display */}
           {showDueDate && (
-            <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-4 sm:mb-6 font-general-sans">
+            <div className="flex items-center justify-center space-x-4 text-white/70 text-sm mb-3 sm:mb-4 font-general-sans">
               <div className="flex items-center space-x-1">
                 <Calendar className="w-4 h-4" />
                 <span>{new Date(task.dueDate).toLocaleDateString()}</span>
@@ -181,7 +160,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         {/* Motivational Quote - Helpful Tip Section */}
         {task.motivationalQuote && (
           <motion.div 
-            className="mb-8 sm:mb-12 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
+            className="mb-6 sm:mb-8 p-4 sm:p-6 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 text-center"
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: 0.4 }}
@@ -192,7 +171,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
 
         {/* View Subtasks Button - Centered Text */}
         <motion.div
-          className="mb-6 sm:mb-8"
+          className="mb-4 sm:mb-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
@@ -230,7 +209,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           <AnimatePresence>
             {showSubtasks && (
               <motion.div
-                className="mt-4 sm:mt-6 space-y-3"
+                className="mt-4 sm:mt-6 space-y-3 max-h-64 overflow-y-auto scrollbar-hide"
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
@@ -423,6 +402,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           </motion.div>
         )}
       </div>
-    </motion.div>
+    </div>
   );
 }

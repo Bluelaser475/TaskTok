@@ -241,7 +241,7 @@ function App() {
   // Show loading screen while checking auth
   if (authLoading) {
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+      <div className="h-screen mobile-height bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <div className="text-center">
           <motion.div
             className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center mb-6 mx-auto"
@@ -279,7 +279,7 @@ function App() {
   // Show error state
   if (error) {
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+      <div className="h-screen mobile-height bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
         
         <div className="text-center">
@@ -301,7 +301,7 @@ function App() {
   // Show loading state for tasks (only for authenticated users)
   if (user && tasksLoading) {
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+      <div className="h-screen mobile-height bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
         
         <div className="text-center">
@@ -321,7 +321,7 @@ function App() {
   // Show empty state if no tasks
   if (tasks.length === 0 && !showTaskList) {
     return (
-      <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
+      <div className="h-screen mobile-height bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
         
         <div className="text-center">
@@ -353,14 +353,14 @@ function App() {
   }
 
   return (
-    <div className="relative h-screen overflow-hidden bg-black" {...swipeHandlers}>
+    <div className="relative h-screen mobile-height overflow-hidden bg-black touch-manipulation" {...swipeHandlers}>
       {/* Stats Bar - Always visible */}
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
-      {/* Visual Progress Indicator - Left Side - Moved further from edge */}
+      {/* Visual Progress Indicator - Left Side */}
       {!showTaskList && tasks.length > 1 && (
         <motion.div
-          className="fixed left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
+          className="fixed left-3 sm:left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5 }}
@@ -368,7 +368,7 @@ function App() {
           {tasks.map((_, index) => (
             <motion.div
               key={index}
-              className={`w-1 h-6 rounded-full transition-all duration-300 ${
+              className={`w-1 h-4 sm:h-6 rounded-full transition-all duration-300 ${
                 index === currentTaskIndex 
                   ? 'bg-white' 
                   : 'bg-white/30'
@@ -383,18 +383,28 @@ function App() {
         </motion.div>
       )}
 
-      {/* Main Task Display with Infinite Scroll Navigation */}
+      {/* Main Task Display with Full Viewport Coverage */}
       {!showTaskList && tasks.length > 0 && (
         <div 
           ref={taskContainerRef}
-          className="h-full overflow-y-auto snap-y snap-mandatory scrollbar-hide"
+          className="absolute inset-0 top-[60px] sm:top-[76px] bottom-0 overflow-y-auto snap-y snap-mandatory scrollbar-hide mobile-scroll"
           style={{ 
             scrollSnapType: 'y mandatory',
-            WebkitOverflowScrolling: 'touch'
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain'
           }}
         >
           {renderedTasks.map((task, index) => (
-            <div key={`${task.id}-${index}`} className="h-full snap-start" style={{ scrollSnapAlign: 'start' }}>
+            <div 
+              key={`${task.id}-${index}`} 
+              className="h-full w-full snap-start snap-item flex-shrink-0"
+              style={{ 
+                scrollSnapAlign: 'start',
+                scrollSnapStop: 'always',
+                height: 'calc(100vh - 60px)',
+                minHeight: 'calc(100dvh - 60px)'
+              }}
+            >
               <TaskCard
                 task={task}
                 onToggleSubtask={handleToggleSubtask}
@@ -406,9 +416,9 @@ function App() {
         </div>
       )}
 
-      {/* Task Counter - Bottom Left - Enhanced mobile spacing */}
+      {/* Task Counter - Bottom Left with Safe Area */}
       {!showTaskList && tasks.length > 0 && (
-        <div className="absolute bottom-20 left-4 sm:left-6 sm:bottom-6 safe-bottom">
+        <div className="fixed bottom-4 left-4 z-40 safe-bottom">
           <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 sm:px-4 sm:py-2 border border-white/20">
             <span className="text-white/90 text-sm font-medium font-general-sans">
               Task {currentTaskIndex + 1}/{tasks.length}
@@ -417,9 +427,9 @@ function App() {
         </div>
       )}
 
-      {/* Bottom Right Controls - Enhanced mobile spacing and positioning */}
+      {/* Bottom Right Controls with Safe Area */}
       {!showTaskList && (
-        <div className="absolute bottom-20 right-4 sm:right-6 sm:bottom-6 flex space-x-3 safe-bottom">
+        <div className="fixed bottom-4 right-4 z-40 flex space-x-3 safe-bottom">
           {/* Refresh Button - only show for authenticated users */}
           {user && (
             <motion.button
