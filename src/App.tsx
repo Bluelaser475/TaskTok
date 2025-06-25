@@ -43,7 +43,6 @@ function App() {
   const [showTaskList, setShowTaskList] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<'up' | 'down' | null>(null);
 
   const currentTask = tasks[currentTaskIndex];
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
@@ -52,14 +51,12 @@ function App() {
   const swipeHandlers = useSwipe({
     onSwipeUp: () => {
       if (tasks.length > 0) {
-        setSwipeDirection('up');
         const nextIndex = (currentTaskIndex + 1) % tasks.length;
         setCurrentTaskIndex(nextIndex);
       }
     },
     onSwipeDown: () => {
       if (tasks.length > 0) {
-        setSwipeDirection('down');
         const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
         setCurrentTaskIndex(prevIndex);
       }
@@ -273,26 +270,17 @@ function App() {
       {/* Single Task Display with AnimatePresence */}
       {!showTaskList && tasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
-          <AnimatePresence mode="sync">
+          <AnimatePresence mode="wait">
             <motion.div
               key={currentTask.id}
               className="h-full w-full absolute inset-0"
-              initial={{ 
-                opacity: 0, 
-                y: swipeDirection === 'up' ? '100%' : swipeDirection === 'down' ? '-100%' : 50 
-              }}
+              initial={{ opacity: 0, y: 50 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ 
-                opacity: 0, 
-                y: swipeDirection === 'up' ? '-100%' : swipeDirection === 'down' ? '100%' : -50 
-              }}
+              exit={{ opacity: 0, y: -50 }}
               transition={{ 
-                type: 'spring',
-                stiffness: 300,
-                damping: 30,
-                mass: 1
+                duration: 0.4,
+                ease: [0.4, 0.0, 0.2, 1]
               }}
-              onAnimationComplete={() => setSwipeDirection(null)}
             >
               <TaskCard
                 task={currentTask}

@@ -85,7 +85,6 @@ export function useSupabaseTasks(userId: string | undefined) {
 
   // Fetch tasks from Supabase
   const fetchTasks = useCallback(async () => {
-    setError(null); // Clear any previous errors
     console.log('🔍 fetchTasks called with userId:', userId);
     if (!userId) {
       console.warn('⚠️ fetchTasks: userId is undefined, skipping fetch');
@@ -162,7 +161,6 @@ export function useSupabaseTasks(userId: string | undefined) {
 
   // Fetch user stats from Supabase
   const fetchStats = useCallback(async () => {
-    setError(null); // Clear any previous errors
     console.log('📈 fetchStats called with userId:', userId);
     if (!userId) {
       console.warn('⚠️ fetchStats: userId is undefined, skipping fetch');
