@@ -2,9 +2,10 @@
   # AI Task Context Generation Edge Function
 
   This function takes a task name and optional details and uses OpenAI to generate:
-  1. A calming, abstract image representing the task
-  2. A motivational quote/tip
-  3. 3 relevant, achievable subtasks
+  1. A motivational quote/tip
+  2. 3 relevant, achievable subtasks
+  
+  Note: Image generation has been removed to improve performance and reduce loading times.
 */
 
 const corsHeaders = {
@@ -21,11 +22,11 @@ interface RequestBody {
 }
 
 interface TaskContextResponse {
-  imageUrl: string;
   quote: string;
   subtasks: string[];
   success: boolean;
   error?: string;
+  source?: 'ai' | 'fallback' | 'emergency_fallback';
 }
 
 Deno.serve(async (req: Request): Promise<Response> => {
@@ -62,9 +63,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     console.log('🎨 Generating task context for:', { taskName, taskDetails, dueDate, recurrence })
 
-    let imageUrl: string = ''
     let quote: string = ''
     let subtasks: string[] = []
+    let source: 'ai' | 'fallback' | 'emergency_fallback' = 'emergency_fallback'
 
     // Try AI generation first, but always fall back to rule-based generation
     try {
@@ -73,9 +74,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
       if (openaiApiKey && openaiApiKey.trim().length > 0) {
         console.log('🔑 OpenAI API key found, attempting AI generation...')
         const aiResult = await generateAITaskContext(taskName, taskDetails, dueDate, recurrence, openaiApiKey)
-        imageUrl = aiResult.imageUrl
         quote = aiResult.quote
         subtasks = aiResult.subtasks
+        source = 'ai'
         console.log('✅ AI generated task context successfully')
       } else {
         console.log('⚠️ No OpenAI API key configured, using rule-based generation')
@@ -84,19 +85,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
     } catch (aiError) {
       console.warn('⚠️ AI generation failed, using rule-based fallback:', aiError)
       const fallbackResult = generateRuleBasedTaskContext(taskName, taskDetails, dueDate, recurrence)
-      imageUrl = fallbackResult.imageUrl
       quote = fallbackResult.quote
       subtasks = fallbackResult.subtasks
+      source = 'fallback'
     }
 
     const response: TaskContextResponse = {
-      imageUrl,
       quote,
       subtasks,
-      success: true
+      success: true,
+      source
     }
 
-    console.log('✅ Generated task context:', { imageUrl: imageUrl.substring(0, 50) + '...', quote, subtasks })
+    console.log('✅ Generated task context:', { quote, subtasks, source })
 
     return new Response(
       JSON.stringify(response),
@@ -115,9 +116,9 @@ Deno.serve(async (req: Request): Promise<Response> => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        imageUrl: fallbackResult.imageUrl,
         quote: fallbackResult.quote,
         subtasks: fallbackResult.subtasks,
+        source: 'emergency_fallback',
         error: 'Used fallback generation due to error'
       }),
       {
@@ -134,49 +135,13 @@ async function generateAITaskContext(
   dueDate: string = '',
   recurrence: string = '',
   apiKey: string
-): Promise<{ imageUrl: string; quote: string; subtasks: string[] }> {
+): Promise<{ quote: string; subtasks: string[] }> {
   console.log('🤖 Starting AI generation...')
   
-  let imageUrl = ''
   let quote = ''
   let subtasks: string[] = []
 
-  // 1. Generate Image using DALL-E
-  try {
-    console.log('🎨 Generating image with DALL-E...')
-    
-    const imagePrompt = `A calming, abstract, or nature-themed image representing the task "${taskName}". ${taskDetails ? `Include symbolic elements related to: ${taskDetails}.` : ''} The image should be peaceful and motivating with soft color palettes. Include symbolic elements like books for study tasks, nature elements for outdoor tasks, or abstract shapes for creative tasks. No human faces. Style: minimalist, calming, inspiring.`
-
-    const imageResponse = await fetch('https://api.openai.com/v1/images/generations', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'dall-e-3',
-        prompt: imagePrompt,
-        n: 1,
-        size: '1024x1024',
-        quality: 'standard',
-        response_format: 'url'
-      })
-    })
-
-    if (imageResponse.ok) {
-      const imageData = await imageResponse.json()
-      imageUrl = imageData.data[0]?.url || ''
-      console.log('✅ Image generated successfully')
-    } else {
-      console.warn('⚠️ Image generation failed, using placeholder')
-      imageUrl = `https://picsum.photos/512/512?random=${Date.now()}`
-    }
-  } catch (imageError) {
-    console.error('❌ Image generation error:', imageError)
-    imageUrl = `https://picsum.photos/512/512?random=${Date.now()}`
-  }
-
-  // 2. Generate Quote and Subtasks using GPT
+  // Generate Quote and Subtasks using GPT
   try {
     console.log('💭 Generating quote and subtasks with GPT...')
     
@@ -273,7 +238,7 @@ Respond with only the JSON object.`
     ]
   }
 
-  return { imageUrl, quote, subtasks }
+  return { quote, subtasks }
 }
 
 function generateRuleBasedTaskContext(
@@ -281,15 +246,12 @@ function generateRuleBasedTaskContext(
   taskDetails: string = '', 
   dueDate: string = '',
   recurrence: string = ''
-): { imageUrl: string; quote: string; subtasks: string[] } {
+): { quote: string; subtasks: string[] } {
   console.log('🔧 Generating rule-based task context...')
   
   const titleLower = taskName.toLowerCase()
   const descLower = taskDetails.toLowerCase()
   const combined = `${titleLower} ${descLower}`.trim()
-
-  // Generate a placeholder image URL
-  const imageUrl = `https://picsum.photos/512/512?random=${Date.now()}`
 
   // Enhanced keyword-based intelligent subtask and quote generation
   const keywordPatterns = [
@@ -381,7 +343,6 @@ function generateRuleBasedTaskContext(
     if (pattern.keywords.some(keyword => combined.includes(keyword))) {
       console.log('✅ Found keyword match for pattern:', pattern.keywords)
       return {
-        imageUrl,
         quote: pattern.quote,
         subtasks: pattern.subtasks
       }
@@ -391,7 +352,6 @@ function generateRuleBasedTaskContext(
   // Default fallback
   console.log('✅ Using default task context')
   return {
-    imageUrl,
     quote: "Progress, not perfection, is the goal.",
     subtasks: [
       'Plan and prepare for the task',
@@ -401,10 +361,9 @@ function generateRuleBasedTaskContext(
   }
 }
 
-function getDefaultTaskContext(): { imageUrl: string; quote: string; subtasks: string[] } {
+function getDefaultTaskContext(): { quote: string; subtasks: string[] } {
   console.log('🔧 Using default task context')
   return {
-    imageUrl: `https://picsum.photos/512/512?random=${Date.now()}`,
     quote: "Every journey begins with a single step.",
     subtasks: [
       'Plan and prepare for the task',

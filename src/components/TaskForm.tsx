@@ -35,7 +35,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     recurringInterval: '',
     noDueDate: false,
     subtasks: [] as Subtask[],
-    imageUrl: '',
     motivationalQuote: ''
   });
 
@@ -122,10 +121,9 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
       console.log('✅ AI generated task context:', data);
 
-      // Update form with AI-generated content
+      // Update form with AI-generated content (no image)
       setFormData(prev => ({
         ...prev,
-        imageUrl: data.imageUrl || '',
         motivationalQuote: data.quote || '',
         subtasks: data.subtasks?.map((text: string, index: number) => ({
           id: `ai-subtask-${index}`,
@@ -165,7 +163,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       
       setFormData(prev => ({
         ...prev,
-        imageUrl: fallbackData.imageUrl,
         motivationalQuote: fallbackData.quote,
         subtasks: fallbackData.subtasks.map((text, index) => ({
           id: `fallback-subtask-${index}`,
@@ -228,7 +225,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
     for (const pattern of patterns) {
       if (pattern.keywords.some(keyword => combined.includes(keyword))) {
         return {
-          imageUrl: `https://picsum.photos/400/300?random=${Date.now()}`,
           quote: pattern.quote,
           subtasks: pattern.subtasks
         };
@@ -237,7 +233,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
     // Default fallback
     return {
-      imageUrl: `https://picsum.photos/400/300?random=${Date.now()}`,
       quote: "Progress, not perfection, is the goal.",
       subtasks: [
         'Plan and prepare for the task',
@@ -320,7 +315,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
         { id: `default-subtask-${Date.now()}-1`, text: `Complete the main part of: ${formData.title}`, completed: false },
         { id: `default-subtask-${Date.now()}-2`, text: 'Review and finalize the task', completed: false }
       ],
-      imageUrl: formData.imageUrl || `https://picsum.photos/512/512?random=${Date.now()}`,
       motivationalQuote: formData.motivationalQuote || 'Every step forward is progress.',
       isRecurring: formData.isRecurring,
       recurringInterval: formData.isRecurring 

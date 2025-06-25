@@ -28,7 +28,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [previousProgress, setPreviousProgress] = useState(0);
-  const [imageError, setImageError] = useState(false);
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
@@ -63,9 +62,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
     }
   };
 
-  // Fallback image URL
-  const fallbackImageUrl = 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop';
-
   return (
     <motion.div
       className="relative h-full w-full overflow-hidden snap-start flex items-center justify-center"
@@ -89,29 +85,8 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
       }}
     >
-      {/* Background Image */}
-      {task.imageUrl && !imageError && (
-        <img 
-          src={task.imageUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={() => setImageError(true)}
-          loading="lazy"
-        />
-      )}
-      
-      {/* Fallback Background Image */}
-      {(!task.imageUrl || imageError) && (
-        <img 
-          src={fallbackImageUrl}
-          alt=""
-          className="absolute inset-0 w-full h-full object-cover"
-          loading="lazy"
-        />
-      )}
-      
-      {/* Background Gradient Overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-90`} />
+      {/* Background Gradient - No images */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-95`} />
       
       {/* Glass Overlay */}
       <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import { Task, Subtask, UserStats } from '../types/task';
 import { calculateXP } from '../utils/taskGenerator';
 
-// Dummy tasks for new authenticated users
+// Dummy tasks for new authenticated users - no images
 const dummyTasks: Task[] = [
   {
     id: 'dummy-auth-1',
@@ -20,7 +20,6 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-1-2', text: 'Create your first real task', completed: false },
       { id: 'sub-auth-1-3', text: 'Complete a subtask to earn XP', completed: false },
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop',
     motivationalQuote: '🎉 Welcome! Your tasks are now saved to your account and will sync across all your devices.',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -42,7 +41,6 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-2-3', text: 'Set up productivity apps', completed: false },
       { id: 'sub-auth-2-4', text: 'Create a distraction-free zone', completed: false },
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=512&h=512&fit=crop',
     motivationalQuote: '🏢 A well-organized workspace can boost your productivity by up to 25%!',
     createdAt: new Date().toISOString(),
     isRecurring: false,
@@ -63,7 +61,6 @@ const dummyTasks: Task[] = [
       { id: 'sub-auth-3-2', text: 'Include 10 minutes of movement', completed: false },
       { id: 'sub-auth-3-3', text: 'Practice gratitude or meditation', completed: false },
     ],
-    imageUrl: 'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=512&h=512&fit=crop',
     motivationalQuote: '🌅 A consistent morning routine can improve your mood and productivity throughout the day.',
     createdAt: new Date().toISOString(),
     isRecurring: true,
@@ -219,7 +216,7 @@ export function useSupabaseTasks(userId: string | undefined) {
       console.log('💾 Starting task creation process...');
       
       // Try to call the generate-task-context Edge Function, but don't fail if it doesn't work
-      let imageUrl = taskData.imageUrl || `https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?w=512&h=512&fit=crop&random=${Date.now()}`;
+      let imageUrl = taskData.imageUrl || undefined;
       let motivationalQuote = taskData.motivationalQuote || 'Every step forward is progress.';
       let generatedSubtasks = taskData.subtasks.length > 0 
         ? taskData.subtasks.map(st => st.text)
@@ -263,7 +260,7 @@ export function useSupabaseTasks(userId: string | undefined) {
         estimated_time: taskData.estimatedTime,
         completed: taskData.completed,
         likes: taskData.likes,
-        image_url: imageUrl,
+        image_url: imageUrl || null,
         motivational_quote: motivationalQuote,
         is_recurring: taskData.isRecurring || false,
         recurring_interval: taskData.recurringInterval || null,
