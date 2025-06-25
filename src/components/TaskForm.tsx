@@ -347,13 +347,7 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       >
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center space-x-3">
-            <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
-            <div className="flex items-center space-x-1 px-2 py-1 bg-purple-500/20 rounded-full border border-purple-500/30">
-              <Sparkles className="w-3 h-3 text-purple-300" />
-              <span className="text-xs text-purple-300 font-medium font-general-sans">AI Powered</span>
-            </div>
-          </div>
+          <h2 className="text-2xl font-bold text-white font-task-title">Create New Task</h2>
           <motion.button
             className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20"
             onClick={onClose}
@@ -365,48 +359,6 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* AI Generation Button */}
-          <div className="space-y-3">
-            <motion.button
-              type="button"
-              onClick={handleGenerateAISubtasks}
-              disabled={isGeneratingAI || !formData.title.trim()}
-              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
-              whileHover={!isGeneratingAI && formData.title.trim() ? { scale: 1.02 } : {}}
-              whileTap={!isGeneratingAI && formData.title.trim() ? { scale: 0.98 } : {}}
-            >
-              {isGeneratingAI ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Generating AI Context...</span>
-                </>
-              ) : (
-                <>
-                  <Wand2 className="w-5 h-5" />
-                  <span>Generate Smart Content</span>
-                </>
-              )}
-            </motion.button>
-            
-            <p className="text-white/60 text-xs text-center font-general-sans">
-              AI will generate subtasks, motivational quotes, and visual inspiration
-            </p>
-          </div>
-
-          {/* AI Context Generation Status */}
-          {contextStatus.type && (
-            <motion.div
-              className={`p-3 border rounded-xl text-sm font-general-sans ${getStatusColor()}`}
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <div className="flex items-center space-x-2">
-                {getStatusIcon()}
-                <span>{contextStatus.message}</span>
-              </div>
-            </motion.div>
-          )}
-
           {/* Title - REQUIRED */}
           <div>
             <label htmlFor="task-title" className="block text-white/90 text-sm font-medium mb-2 font-general-sans">
@@ -738,6 +690,48 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
               </motion.button>
             </div>
           </div>
+
+          {/* AI Generation Button - Moved to bottom */}
+          <div className="space-y-3">
+            <motion.button
+              type="button"
+              onClick={handleGenerateAISubtasks}
+              disabled={isGeneratingAI || !formData.title.trim()}
+              className="w-full py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl text-white font-semibold flex items-center justify-center space-x-2 hover:from-purple-600 hover:to-pink-600 focus:outline-none focus:ring-2 focus:ring-purple-500/50 shadow-lg font-supreme disabled:opacity-50 disabled:cursor-not-allowed"
+              whileHover={!isGeneratingAI && formData.title.trim() ? { scale: 1.02 } : {}}
+              whileTap={!isGeneratingAI && formData.title.trim() ? { scale: 0.98 } : {}}
+            >
+              {isGeneratingAI ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Generating With AI...</span>
+                </>
+              ) : (
+                <>
+                  <Wand2 className="w-5 h-5" />
+                  <span>Generate With AI</span>
+                </>
+              )}
+            </motion.button>
+            
+            <p className="text-white/60 text-xs text-center font-general-sans">
+              AI will generate subtasks, motivational quotes, and visual inspiration
+            </p>
+          </div>
+
+          {/* AI Context Generation Status */}
+          {contextStatus.type && (
+            <motion.div
+              className={`p-3 border rounded-xl text-sm font-general-sans ${getStatusColor()}`}
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <div className="flex items-center space-x-2">
+                {getStatusIcon()}
+                <span>{contextStatus.message}</span>
+              </div>
+            </motion.div>
+          )}
 
           {/* Submit Button */}
           <motion.button
