@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 
 interface SwipeHandlers {
   onSwipeUp?: () => void;
@@ -8,32 +8,27 @@ interface SwipeHandlers {
 }
 
 export function useSwipe(handlers: SwipeHandlers) {
-  // Use refs instead of state to avoid re-renders and maintain stable references
-  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
-  const touchEndRef = useRef<{ x: number; y: number } | null>(null);
+  const [touchStart, setTouchStart] = useState<{ x: number; y: number } | null>(null);
+  const [touchEnd, setTouchEnd] = useState<{ x: number; y: number } | null>(null);
 
   const minSwipeDistance = 50;
 
-  // Stable callback functions using useCallback with empty dependency array
-  const onTouchStart = useCallback((e: TouchEvent) => {
-    touchEndRef.current = null;
-    touchStartRef.current = {
+  const onTouchStart = (e: TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart({
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
-    };
-  }, []);
+    });
+  };
 
-  const onTouchMove = useCallback((e: TouchEvent) => {
-    touchEndRef.current = {
+  const onTouchMove = (e: TouchEvent) => {
+    setTouchEnd({
       x: e.targetTouches[0].clientX,
       y: e.targetTouches[0].clientY
-    };
-  }, []);
+    });
+  };
 
-  const onTouchEnd = useCallback(() => {
-    const touchStart = touchStartRef.current;
-    const touchEnd = touchEndRef.current;
-    
+  const onTouchEnd = () => {
     if (!touchStart || !touchEnd) return;
 
     const distanceX = touchStart.x - touchEnd.x;
@@ -57,9 +52,8 @@ export function useSwipe(handlers: SwipeHandlers) {
         handlers.onSwipeRight();
       }
     }
-  }, [handlers]);
+  };
 
-  // Add event listeners only once when component mounts
   useEffect(() => {
     const options = { passive: true };
     
@@ -72,8 +66,7 @@ export function useSwipe(handlers: SwipeHandlers) {
       document.removeEventListener('touchmove', onTouchMove);
       document.removeEventListener('touchend', onTouchEnd);
     };
-  }, []); // Empty dependency array ensures this runs only once
+  }, [onTouchStart, onTouchMove, onTouchEnd]); // Include the callback functions in dependencies
 
-  // Return the handlers for manual attachment if needed (though not used in current implementation)
   return { onTouchStart, onTouchMove, onTouchEnd };
 }
