@@ -24,12 +24,12 @@ export function useScrollState(userId?: string) {
           .from('user_profiles')
           .select('last_scroll_state')
           .eq('user_id', userId)
-          .single();
+          .limit(1);
 
         if (error && error.code !== 'PGRST116') {
           console.error('Error loading scroll state:', error);
-        } else if (data?.last_scroll_state) {
-          setScrollState(data.last_scroll_state);
+        } else if (data && data.length > 0 && data[0]?.last_scroll_state) {
+          setScrollState(data[0].last_scroll_state);
         }
       } catch (err) {
         console.error('Error loading scroll state:', err);
