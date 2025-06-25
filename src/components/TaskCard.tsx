@@ -28,6 +28,8 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [previousProgress, setPreviousProgress] = useState(0);
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
@@ -41,6 +43,16 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       setPreviousProgress(progress);
     }
   }, [progress, previousProgress]);
+
+  // Preload image for better performance
+  useEffect(() => {
+    if (task.imageUrl && !imageError) {
+      const img = new Image();
+      img.onload = () => setImageLoaded(true);
+      img.onerror = () => setImageError(true);
+      img.src = task.imageUrl;
+    }
+  }, [task.imageUrl, imageError]);
 
   const handleAddSubtask = () => {
     if (newSubtaskText.trim() && onAddSubtask && !isDummyTask) {
@@ -84,35 +96,13 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         scale: { duration: 1.2, times: [0, 0.5, 1] },
         boxShadow: { duration: 1.5, times: [0, 0.5, 1] }
       }}
+      // Optimize for GPU acceleration
+      style={{ 
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        willChange: 'transform'
+      }}
     >
-      {/* Background Image */}
-      {task.imageUrl && (
-        <div 
-          className="absolute inset-0 bg-cover bg-center bg-no-repeat"
-          style={{ backgroundImage: `url(${task.imageUrl})` }}
-        />
-      )}
-      
-      {/* Background Gradient Overlay */}
-      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-90`} />
-      
-      {/* Glass Overlay */}
-      <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
-
-      {/* Bolt Badge - Positioned relative to task card */}
-      <a 
-        href="https://bolt.new" 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="absolute top-[80px] right-4 z-30"
-      >
-        <img 
-          src="/white_circle_360x360 copy.png" 
-          alt="Powered by Bolt.new" 
-          className="w-12 h-12 rounded-full object-cover"
-        />
-      </a>
-
       {/* Enhanced Progress Bar at Top with Smooth Animation */}
       <div className="fixed top-0 left-0 right-0 z-50 h-1 bg-black/20">
         <motion.div
@@ -124,6 +114,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             ease: "easeOut",
             type: "tween"
           }}
+          style={{ willChange: 'width' }}
         />
         {/* Completion Glow Effect */}
         {progress === 100 && (
@@ -143,7 +134,50 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
         )}
       </div>
 
-      {/* Centered Content Container with increased left padding to avoid scrollbar overlap */}
+      {/* Optimized Background Image with Loading States */}
+      {task.imageUrl && !imageError && (
+        <div className="absolute inset-0">
+          {/* Loading placeholder */}
+          {!imageLoaded && (
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900 animate-pulse" />
+          )}
+          
+          {/* Actual image */}
+          <div 
+            className={`absolute inset-0 bg-cover bg-center bg-no-repeat transition-opacity duration-500 ${
+              imageLoaded ? 'opacity-100' : 'opacity-0'
+            }`}
+            style={{ 
+              backgroundImage: imageLoaded ? `url(${task.imageUrl})` : 'none',
+              transform: 'translateZ(0)', // GPU acceleration
+              willChange: 'opacity'
+            }}
+          />
+        </div>
+      )}
+      
+      {/* Background Gradient Overlay */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${priorityColors[task.priority]} opacity-90`} />
+      
+      {/* Glass Overlay */}
+      <div className="absolute inset-0 backdrop-blur-sm bg-black/20" />
+
+      {/* Bolt Badge - Positioned relative to task card */}
+      <a 
+        href="https://bolt.new" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="absolute top-[80px] right-4 z-30"
+      >
+        <img 
+          src="/white_circle_360x360 copy.png" 
+          alt="Powered by Bolt.new" 
+          className="w-12 h-12 rounded-full object-cover"
+          loading="lazy"
+        />
+      </a>
+
+      {/* Centered Content Container with optimized layout */}
       <div className="relative w-full max-w-md mx-auto px-4 py-8 pl-8 pr-4 sm:pl-10 sm:pr-8 sm:py-12 pt-[160px] pb-[120px]">
         {/* Task Header */}
         <motion.div 
@@ -190,7 +224,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           </motion.div>
         )}
 
-        {/* View Subtasks Button - Centered Text */}
+        {/* View Subtasks Button - Optimized for performance */}
         <motion.div
           className="mb-6 sm:mb-8"
           initial={{ opacity: 0, y: 20 }}
@@ -202,11 +236,10 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             onClick={() => setShowSubtasks(!showSubtasks)}
             whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.99 }}
+            style={{ willChange: 'transform' }}
           >
             <div className="flex items-center justify-center space-x-3">
-              <div className="flex items-center space-x-2">
-                <span className="font-medium text-sm sm:text-base">Subtasks</span>
-              </div>
+              <span className="font-medium text-sm sm:text-base">Subtasks</span>
               <motion.span 
                 className="text-xs sm:text-sm text-white/60 font-general-sans"
                 animate={completedSubtasks !== previousProgress ? {
@@ -220,13 +253,14 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
               <motion.div
                 animate={{ rotate: showSubtasks ? 180 : 0 }}
                 transition={{ duration: 0.2 }}
+                style={{ willChange: 'transform' }}
               >
                 <ChevronDown className="w-5 h-5" />
               </motion.div>
             </div>
           </motion.button>
 
-          {/* Subtasks List */}
+          {/* Subtasks List with optimized animations */}
           <AnimatePresence>
             {showSubtasks && (
               <motion.div
@@ -235,6 +269,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
                 transition={{ duration: 0.3 }}
+                style={{ willChange: 'height, opacity' }}
               >
                 {task.subtasks.map((subtask, index) => (
                   <motion.div
@@ -242,7 +277,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                     className="flex items-center space-x-3 p-3 sm:p-4 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
                     initial={{ opacity: 0, x: -20 }}
                     animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.1 }}
+                    transition={{ delay: index * 0.05 }} // Reduced delay for faster loading
                   >
                     <motion.button
                       className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
@@ -265,6 +300,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                       } : {}}
                       transition={{ duration: 0.8 }}
                       disabled={isDummyTask}
+                      style={{ willChange: 'transform' }}
                     >
                       {subtask.completed && (
                         <motion.div
@@ -365,6 +401,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
+            style={{ willChange: 'transform' }}
           >
             Complete Task ✨
           </motion.button>
