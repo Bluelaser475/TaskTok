@@ -340,12 +340,12 @@ function App() {
         </div>
       )}
 
-      {/* Single Task Display with AnimatePresence - Fixed condition */}
+      {/* Single Task Display with AnimatePresence - Fixed key to prevent rerender on subtask toggle */}
       {!showTaskList && !showCompletedTasks && activeTasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
           <AnimatePresence mode="wait">
             <motion.div
-              key={currentTask.id}
+              key={`task-${currentTaskIndex}`}
               className="h-full w-full absolute inset-0"
               initial={{ 
                 opacity: 0, 
