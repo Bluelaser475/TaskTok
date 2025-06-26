@@ -309,27 +309,34 @@ function App() {
         </motion.div>
       )}
 
-      {/* Single Task Display with AnimatePresence */}
+      {/* Single Task Display with AnimatePresence - Removed mode="wait" */}
       {!showTaskList && tasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={currentTask.id}
               className="h-full w-full absolute inset-0"
               initial={{ 
                 opacity: 0, 
-                y: swipeDirection === 'up' ? '100%' : swipeDirection === 'down' ? '-100%' : 50 
+                y: swipeDirection === 'up' ? '100%' : swipeDirection === 'down' ? '-100%' : 0,
+                scale: 0.95
               }}
-              animate={{ opacity: 1, y: 0 }}
+              animate={{ 
+                opacity: 1, 
+                y: 0,
+                scale: 1
+              }}
               exit={{ 
                 opacity: 0, 
-                y: swipeDirection === 'up' ? '-100%' : swipeDirection === 'down' ? '100%' : -50 
+                y: swipeDirection === 'up' ? '-100%' : swipeDirection === 'down' ? '100%' : 0,
+                scale: 0.95
               }}
               transition={{ 
                 type: 'spring',
-                stiffness: 300,
-                damping: 30,
-                mass: 1
+                stiffness: 400,
+                damping: 35,
+                mass: 0.8,
+                duration: 0.4
               }}
               onAnimationComplete={() => setSwipeDirection(null)}
             >
