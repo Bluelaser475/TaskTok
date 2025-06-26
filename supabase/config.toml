@@ -7,7 +7,7 @@ enabled = true
 # Port to use for the API URL.
 port = 54321
 # Schemas to expose in your API. Tables, views and stored procedures in this schema will get API
-# endpoints. public and storage are always included.
+endpoints. public and storage are always included.
 schemas = ["public", "storage", "graphql_public"]
 # Extra schemas to add to the search_path of every request. public is always included.
 extra_search_path = ["public", "extensions"]
@@ -145,9 +145,9 @@ backend = "postgres"
 [functions]
 # Configure Edge Functions
 [functions.generate-task-context]
-# Allow network access to OpenAI API
+# Allow network access to external APIs
 verify_jwt = false
 import_map = "./functions/generate-task-context/import_map.json"
-# Grant network permissions for OpenAI API calls
+# Grant full network permissions for external API calls
 [functions.generate-task-context.env]
-DENO_PERMISSIONS = "--allow-net=api.openai.com --allow-env"
+DENO_PERMISSIONS = "--allow-net --allow-env"
