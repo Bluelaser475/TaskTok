@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle, Trash2, Wand2, Zap, AlertTriangle, CheckCircle, Lock, User } from 'lucide-react';
 import { Task, Subtask } from '../types/task';
 import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
 
 interface TaskFormProps {
   onSubmit: (task: Omit<Task, 'id' | 'createdAt'>) => void;
@@ -75,31 +76,22 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       console.log('🎨 Calling AI task context generation...');
       setContextStatus({ type: null, message: '' });
 
-      // Use the provided Supabase edge function URL
-      const edgeFunctionUrl = 'https://mjvaptkhhscbeiqywjyl.supabase.co/functions/v1/generate-subtasks';
+      console.log('📡 Calling Supabase Edge Function: generate-task-context');
 
-      console.log('📡 Calling edge function:', edgeFunctionUrl);
-
-      const response = await fetch(edgeFunctionUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke('generate-task-context', {
+        body: {
           taskName: title.trim(),
           taskDetails: description.trim(),
           dueDate: dueDate || undefined,
           recurrence: recurrence || undefined
-        })
+        }
       });
 
-      if (!response.ok) {
-        console.error('❌ Edge function HTTP error:', response.status, response.statusText);
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      if (error) {
+        console.error('❌ Edge function error:', error);
+        throw new Error(error.message || 'Edge function call failed');
       }
 
-      const data = await response.json();
       console.log('✅ Edge function response:', data);
 
       if (!data || !data.success) {
