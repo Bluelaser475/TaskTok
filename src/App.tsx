@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, RefreshCw, List } from 'lucide-react';
+import { Plus, RefreshCw, List, ChevronUp, ChevronDown } from 'lucide-react';
 import { Task } from './types/task';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
@@ -49,6 +49,23 @@ function App() {
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Navigation helper functions
+  const navigateToNextTask = useCallback(() => {
+    if (tasks.length > 0) {
+      setSwipeDirection('up');
+      const nextIndex = (currentTaskIndex + 1) % tasks.length;
+      setCurrentTaskIndex(nextIndex);
+    }
+  }, [currentTaskIndex, tasks.length]);
+
+  const navigateToPreviousTask = useCallback(() => {
+    if (tasks.length > 0) {
+      setSwipeDirection('down');
+      const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
+      setCurrentTaskIndex(prevIndex);
+    }
+  }, [currentTaskIndex, tasks.length]);
+
   // Desktop wheel event handler for task navigation
   useEffect(() => {
     const handleWheel = (e: WheelEvent) => {
@@ -59,18 +76,12 @@ function App() {
       if (window.lastWheelTime && now - window.lastWheelTime < 300) return;
       window.lastWheelTime = now;
 
-      if (tasks.length > 0) {
-        if (e.deltaY > 0) {
-          // Scrolling down - next task
-          setSwipeDirection('up');
-          const nextIndex = (currentTaskIndex + 1) % tasks.length;
-          setCurrentTaskIndex(nextIndex);
-        } else if (e.deltaY < 0) {
-          // Scrolling up - previous task
-          setSwipeDirection('down');
-          const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
-          setCurrentTaskIndex(prevIndex);
-        }
+      if (e.deltaY > 0) {
+        // Scrolling down - next task
+        navigateToNextTask();
+      } else if (e.deltaY < 0) {
+        // Scrolling up - previous task
+        navigateToPreviousTask();
       }
     };
 
@@ -81,24 +92,12 @@ function App() {
         container.removeEventListener('wheel', handleWheel);
       };
     }
-  }, [currentTaskIndex, tasks.length, showTaskList, showTaskForm, showAuthForm]);
+  }, [navigateToNextTask, navigateToPreviousTask, showTaskList, showTaskForm, showAuthForm]);
 
   // Swipe handlers for mobile navigation
   const swipeHandlers = useSwipe({
-    onSwipeUp: () => {
-      if (tasks.length > 0) {
-        setSwipeDirection('up');
-        const nextIndex = (currentTaskIndex + 1) % tasks.length;
-        setCurrentTaskIndex(nextIndex);
-      }
-    },
-    onSwipeDown: () => {
-      if (tasks.length > 0) {
-        setSwipeDirection('down');
-        const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
-        setCurrentTaskIndex(prevIndex);
-      }
-    }
+    onSwipeUp: navigateToNextTask,
+    onSwipeDown: navigateToPreviousTask
   });
 
   const handleToggleSubtask = useCallback((taskId: string, subtaskId: string) => {
@@ -283,13 +282,46 @@ function App() {
       {/* Stats Bar - Always visible */}
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
-      {/* Visual Progress Indicator - Left Side */}
+      {/* Navigation Arrows - Left Side */}
+      {!showTaskList && !showTaskForm && !showAuthForm && tasks.length > 1 && (
+        <div className="fixed left-4 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-4">
+          {/* Previous Task Arrow */}
+          <motion.button
+            className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 border border-white/20 transition-all duration-200"
+            onClick={navigateToPreviousTask}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.2)' }}
+            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.5 }}
+            aria-label="Previous task"
+          >
+            <ChevronUp className="w-6 h-6" />
+          </motion.button>
+
+          {/* Next Task Arrow */}
+          <motion.button
+            className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/20 border border-white/20 transition-all duration-200"
+            onClick={navigateToNextTask}
+            whileHover={{ scale: 1.1, backgroundColor: 'rgba(255,255,255,0.2)' }}
+            whileTap={{ scale: 0.9 }}
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.6 }}
+            aria-label="Next task"
+          >
+            <ChevronDown className="w-6 h-6" />
+          </motion.button>
+        </div>
+      )}
+
+      {/* Visual Progress Indicator - Left Side (moved right to accommodate arrows) */}
       {!showTaskList && tasks.length > 1 && (
         <motion.div
-          className="fixed left-6 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
+          className="fixed left-20 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.7 }}
         >
           {tasks.map((_, index) => (
             <motion.div
@@ -312,7 +344,7 @@ function App() {
       {/* Single Task Display with AnimatePresence */}
       {!showTaskList && tasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
-          <AnimatePresence mode="wait">
+          <AnimatePresence>
             <motion.div
               key={currentTask.id}
               className="h-full w-full absolute inset-0"
