@@ -174,16 +174,9 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                 <div className="flex items-center space-x-2">
                   <span className="font-medium text-base">Subtasks</span>
                 </div>
-                <motion.span 
-                  className="text-sm text-white/60 font-general-sans"
-                  animate={completedSubtasks !== previousProgress ? {
-                    scale: [1, 1.2, 1],
-                    color: ['rgba(255,255,255,0.6)', 'rgba(34,197,94,0.8)', 'rgba(255,255,255,0.6)']
-                  } : {}}
-                  transition={{ duration: 0.6 }}
-                >
+                <span className="text-sm text-white/60 font-general-sans">
                   {completedSubtasks}/{task.subtasks.length}
-                </motion.span>
+                </span>
                 <motion.div
                   animate={{ rotate: showSubtasks ? 180 : 0 }}
                   transition={{ duration: 0.2 }}
@@ -211,47 +204,25 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
                     >
-                      <motion.button
-                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
+                      <button
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-200 ${
                           subtask.completed
-                            ? 'bg-green-500 border-green-500 shadow-lg shadow-green-500/30'
+                            ? 'bg-green-500 border-green-500'
                             : isDummyTask
                             ? 'border-white/30 cursor-not-allowed'
                             : 'border-white/50 hover:border-white/80 hover:bg-white/10'
                         }`}
                         onClick={() => handleToggleSubtask(subtask.id)}
-                        whileHover={isDummyTask ? {} : { scale: 1.1 }}
-                        whileTap={isDummyTask ? {} : { scale: 0.9 }}
-                        animate={subtask.completed ? {
-                          scale: [1, 1.2, 1],
-                          boxShadow: [
-                            '0 0 0 rgba(34, 197, 94, 0)',
-                            '0 0 15px rgba(34, 197, 94, 0.6)',
-                            '0 0 5px rgba(34, 197, 94, 0.3)'
-                          ]
-                        } : {}}
-                        transition={{ duration: 0.6 }}
                         disabled={isDummyTask}
                       >
-                        <AnimatePresence>
-                          {subtask.completed && (
-                            <motion.div
-                              initial={{ scale: 0, rotate: -180 }}
-                              animate={{ scale: 1, rotate: 0 }}
-                              exit={{ scale: 0, rotate: 180 }}
-                              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
-                            >
-                              <Check className="w-4 h-4 text-white" />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
+                        {subtask.completed && <Check className="w-4 h-4 text-white" />}
                         {isDummyTask && !subtask.completed && (
                           <Lock className="w-3 h-3 text-white/40" />
                         )}
-                      </motion.button>
+                      </button>
                       
                       <span
-                        className={`text-sm flex-1 break-words font-general-sans transition-all duration-300 ${
+                        className={`text-sm flex-1 break-words font-general-sans transition-all duration-200 ${
                           subtask.completed 
                             ? 'text-white/60 line-through' 
                             : isDummyTask
@@ -262,16 +233,9 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                         {subtask.text}
                       </span>
 
-                      {/* Completion celebration effect */}
+                      {/* Simple completion indicator */}
                       {subtask.completed && (
-                        <motion.div
-                          className="flex-shrink-0"
-                          initial={{ scale: 0, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ delay: 0.3 }}
-                        >
-                          <CheckCircle2 className="w-4 h-4 text-green-400" />
-                        </motion.div>
+                        <CheckCircle2 className="w-4 h-4 text-green-400 flex-shrink-0" />
                       )}
                     </motion.div>
                   ))}
