@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Edit3, Trash2, Plus, Check, X, Calendar, Clock, Trophy, Zap, Target, RotateCcw } from 'lucide-react';
+import { ArrowLeft, Edit3, Trash2, Plus, Check, X, Calendar, Clock, Trophy, Zap, Target, RotateCcw, Award } from 'lucide-react';
 import { Task, Subtask, UserStats } from '../types/task';
 
 interface TaskListViewProps {
@@ -13,6 +13,7 @@ interface TaskListViewProps {
   onAddSubtask: (taskId: string, subtaskText: string) => void;
   onDeleteSubtask: (taskId: string, subtaskId: string) => void;
   onToggleSubtask: (taskId: string, subtaskId: string) => void;
+  onViewCompletedTasks: () => void;
 }
 
 const priorityColors = {
@@ -41,7 +42,8 @@ export function TaskListView({
   onDeleteTask, 
   onAddSubtask, 
   onDeleteSubtask, 
-  onToggleSubtask 
+  onToggleSubtask,
+  onViewCompletedTasks
 }: TaskListViewProps) {
   const [editingTask, setEditingTask] = useState<string | null>(null);
   const [editingSubtask, setEditingSubtask] = useState<string | null>(null);
@@ -223,16 +225,31 @@ export function TaskListView({
             <ArrowLeft className="w-5 h-5 sm:w-6 sm:h-6" />
           </motion.button>
 
-          {/* Center: New Task Button */}
-          <motion.button
-            className="px-4 py-2 sm:px-8 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
-            onClick={onAddTask}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
-            <span className="text-sm sm:text-base">New Task</span>
-          </motion.button>
+          {/* Center: Action Buttons */}
+          <div className="flex items-center space-x-2 sm:space-x-4">
+            {/* Completed Tasks Button */}
+            <motion.button
+              className="px-3 py-2 sm:px-4 sm:py-2 bg-green-500/20 text-green-300 rounded-full border border-green-500/30 hover:bg-green-500/30 flex items-center space-x-2 font-supreme"
+              onClick={onViewCompletedTasks}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Award className="w-4 h-4" />
+              <span className="text-sm font-medium hidden sm:inline">Completed</span>
+              <span className="text-sm font-medium sm:hidden">{completedTasks.length}</span>
+            </motion.button>
+
+            {/* New Task Button */}
+            <motion.button
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
+              onClick={onAddTask}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">New Task</span>
+            </motion.button>
+          </div>
 
           {/* Right: Stats Container */}
           <div className="flex items-center space-x-2 sm:space-x-4">
@@ -327,45 +344,6 @@ export function TaskListView({
                     newSubtaskText={newSubtaskText}
                     setNewSubtaskText={setNewSubtaskText}
                     addSubtask={addSubtask}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Completed Tasks */}
-          {completedTasks.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-white/60 mb-4 flex items-center space-x-2 font-task-title">
-                <div className="w-2 h-6 bg-gradient-to-b from-green-400 to-emerald-400 rounded-full" />
-                <span>Completed Tasks ({completedTasks.length})</span>
-              </h2>
-              <div className="space-y-4">
-                {completedTasks.map((task) => (
-                  <TaskItem
-                    key={task.id}
-                    task={task}
-                    isEditing={false}
-                    editForm={editForm}
-                    setEditForm={setEditForm}
-                    customInterval={customInterval}
-                    setCustomInterval={setCustomInterval}
-                    validationErrors={{}}
-                    onStartEdit={() => {}}
-                    onSave={() => {}}
-                    onCancel={() => {}}
-                    onDelete={() => onDeleteTask(task.id)}
-                    onToggleSubtask={onToggleSubtask}
-                    onDeleteSubtask={onDeleteSubtask}
-                    onAddSubtask={onAddSubtask}
-                    editingSubtask={editingSubtask}
-                    setEditingSubtask={setEditingSubtask}
-                    addingSubtaskTo={addingSubtaskTo}
-                    setAddingSubtaskTo={setAddingSubtaskTo}
-                    newSubtaskText={newSubtaskText}
-                    setNewSubtaskText={setNewSubtaskText}
-                    addSubtask={addSubtask}
-                    isCompleted
                   />
                 ))}
               </div>

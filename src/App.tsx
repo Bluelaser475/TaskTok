@@ -5,6 +5,7 @@ import { Task } from './types/task';
 import { TaskCard } from './components/TaskCard';
 import { TaskForm } from './components/TaskForm';
 import { TaskListView } from './components/TaskListView';
+import { CompletedTasksView } from './components/CompletedTasksView';
 import { StatsBar } from './components/StatsBar';
 import { AuthForm } from './components/AuthForm';
 import { OnboardingScreen } from './components/OnboardingScreen';
@@ -41,30 +42,33 @@ function App() {
   const [currentTaskIndex, setCurrentTaskIndex] = useState(0);
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [showTaskList, setShowTaskList] = useState(false);
+  const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [showAuthForm, setShowAuthForm] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'up' | 'down' | null>(null);
 
   const currentTask = tasks[currentTaskIndex];
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
+  const completedTasks = tasks.filter(task => task.completed);
+  const activeTasks = tasks.filter(task => !task.completed);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Navigation helper functions
   const navigateToNextTask = useCallback(() => {
-    if (tasks.length > 0) {
+    if (activeTasks.length > 0) {
       setSwipeDirection('up');
-      const nextIndex = (currentTaskIndex + 1) % tasks.length;
+      const nextIndex = (currentTaskIndex + 1) % activeTasks.length;
       setCurrentTaskIndex(nextIndex);
     }
-  }, [currentTaskIndex, tasks.length]);
+  }, [currentTaskIndex, activeTasks.length]);
 
   const navigateToPreviousTask = useCallback(() => {
-    if (tasks.length > 0) {
+    if (activeTasks.length > 0) {
       setSwipeDirection('down');
-      const prevIndex = (currentTaskIndex - 1 + tasks.length) % tasks.length;
+      const prevIndex = (currentTaskIndex - 1 + activeTasks.length) % activeTasks.length;
       setCurrentTaskIndex(prevIndex);
     }
-  }, [currentTaskIndex, tasks.length]);
+  }, [currentTaskIndex, activeTasks.length]);
 
   // Desktop wheel event handler for task navigation
   useEffect(() => {
@@ -86,13 +90,13 @@ function App() {
     };
 
     const container = containerRef.current;
-    if (container && !showTaskList && !showTaskForm && !showAuthForm) {
+    if (container && !showTaskList && !showTaskForm && !showAuthForm && !showCompletedTasks) {
       container.addEventListener('wheel', handleWheel, { passive: false });
       return () => {
         container.removeEventListener('wheel', handleWheel);
       };
     }
-  }, [navigateToNextTask, navigateToPreviousTask, showTaskList, showTaskForm, showAuthForm]);
+  }, [navigateToNextTask, navigateToPreviousTask, showTaskList, showTaskForm, showAuthForm, showCompletedTasks]);
 
   // Swipe handlers for mobile navigation
   const swipeHandlers = useSwipe({
@@ -106,6 +110,8 @@ function App() {
 
   const handleCompleteTask = useCallback((taskId: string) => {
     completeTask(taskId);
+    // Reset to first task after completion
+    setCurrentTaskIndex(0);
   }, [completeTask]);
 
   const handleCreateTask = useCallback((newTaskData: Omit<Task, 'id' | 'createdAt'>) => {
@@ -239,8 +245,8 @@ function App() {
     );
   }
 
-  // Show empty state if no tasks
-  if (tasks.length === 0 && !showTaskList) {
+  // Show empty state if no active tasks
+  if (activeTasks.length === 0 && !showTaskList && !showCompletedTasks) {
     return (
       <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
@@ -253,21 +259,37 @@ function App() {
           >
             <Plus className="w-10 h-10 text-white" />
           </motion.div>
-          <h2 className="text-2xl font-bold text-white mb-4 font-task-title">No Tasks Yet</h2>
+          <h2 className="text-2xl font-bold text-white mb-4 font-task-title">
+            {completedTasks.length > 0 ? 'All Tasks Completed!' : 'No Tasks Yet'}
+          </h2>
           <p className="text-white/70 mb-8 font-general-sans">
-            {!user 
-              ? `Create up to 3 tasks to try TaskTok! (${userCreatedTasks.length}/3)` 
-              : 'Create your first task to get started!'
+            {completedTasks.length > 0 
+              ? `Great job! You've completed ${completedTasks.length} task${completedTasks.length !== 1 ? 's' : ''}. Create a new task to keep going!`
+              : !user 
+                ? `Create up to 3 tasks to try TaskTok! (${userCreatedTasks.length}/3)` 
+                : 'Create your first task to get started!'
             }
           </p>
-          <motion.button
-            className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold font-supreme"
-            onClick={() => setShowTaskForm(true)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Create Task
-          </motion.button>
+          <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
+            <motion.button
+              className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold font-supreme"
+              onClick={() => setShowTaskForm(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              Create Task
+            </motion.button>
+            {completedTasks.length > 0 && (
+              <motion.button
+                className="px-8 py-3 bg-green-500/20 text-green-300 rounded-full border border-green-500/30 hover:bg-green-500/30 font-semibold font-supreme"
+                onClick={() => setShowCompletedTasks(true)}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                View Completed ({completedTasks.length})
+              </motion.button>
+            )}
+          </div>
         </div>
       </div>
     );
@@ -283,7 +305,7 @@ function App() {
       <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
 
       {/* Navigation Arrows - Left Side */}
-      {!showTaskList && !showTaskForm && !showAuthForm && tasks.length > 1 && (
+      {!showTaskList && !showTaskForm && !showAuthForm && !showCompletedTasks && activeTasks.length > 1 && (
         <div className="fixed left-4 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-4">
           {/* Previous Task Arrow */}
           <motion.button
@@ -316,7 +338,7 @@ function App() {
       )}
 
       {/* Single Task Display with AnimatePresence */}
-      {!showTaskList && tasks.length > 0 && currentTask && (
+      {!showTaskList && !showCompletedTasks && activeTasks.length > 0 && currentTask && !currentTask.completed && (
         <div className="h-full w-full relative">
           <AnimatePresence>
             <motion.div
@@ -351,18 +373,18 @@ function App() {
       )}
 
       {/* Task Counter - Bottom Left - Enhanced mobile spacing */}
-      {!showTaskList && tasks.length > 0 && (
+      {!showTaskList && !showCompletedTasks && activeTasks.length > 0 && (
         <div className="absolute bottom-6 left-6 sm:left-8 sm:bottom-6" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           <div className="bg-white/10 backdrop-blur-sm rounded-full px-3 py-1 sm:px-4 sm:py-2 border border-white/20">
             <span className="text-white/90 text-sm font-medium font-general-sans">
-              Task {currentTaskIndex + 1}/{tasks.length}
+              Task {currentTaskIndex + 1}/{activeTasks.length}
             </span>
           </div>
         </div>
       )}
 
       {/* Bottom Right Controls - Enhanced mobile spacing and positioning */}
-      {!showTaskList && (
+      {!showTaskList && !showCompletedTasks && (
         <div 
           className="absolute bottom-6 right-4 sm:right-6 sm:bottom-6 flex space-x-3"
           style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
@@ -439,6 +461,21 @@ function App() {
             onAddSubtask={handleAddSubtask}
             onDeleteSubtask={handleDeleteSubtask}
             onToggleSubtask={handleToggleSubtask}
+            onViewCompletedTasks={() => {
+              setShowTaskList(false);
+              setShowCompletedTasks(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Completed Tasks View */}
+      <AnimatePresence>
+        {showCompletedTasks && (
+          <CompletedTasksView
+            completedTasks={completedTasks}
+            stats={stats}
+            onClose={() => setShowCompletedTasks(false)}
           />
         )}
       </AnimatePresence>
