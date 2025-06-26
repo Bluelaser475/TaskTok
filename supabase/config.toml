@@ -148,6 +148,6 @@ backend = "postgres"
 # Allow network access to external APIs
 verify_jwt = false
 import_map = "./functions/generate-task-context/import_map.json"
-# Grant full network permissions for external API calls
-[functions.generate-task-context.env]
-DENO_PERMISSIONS = "--allow-net --allow-env"
+# Grant network and environment permissions for external API calls
+allow_net = true
+allow_env = true
