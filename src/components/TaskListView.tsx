@@ -226,20 +226,8 @@ export function TaskListView({
           </motion.button>
 
           {/* Center: Action Buttons */}
-          <div className="flex items-center space-x-2 sm:space-x-4">
-            {/* Completed Tasks Button */}
-            <motion.button
-              className="px-3 py-2 sm:px-4 sm:py-2 bg-green-500/20 text-green-300 rounded-full border border-green-500/30 hover:bg-green-500/30 flex items-center space-x-2 font-supreme"
-              onClick={onViewCompletedTasks}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-            >
-              <Award className="w-4 h-4" />
-              <span className="text-sm font-medium hidden sm:inline">Completed</span>
-              <span className="text-sm font-medium sm:hidden">{completedTasks.length}</span>
-            </motion.button>
-
-            {/* New Task Button */}
+          <div className="flex items-center space-x-2 sm:space-x-3">
+            {/* New Task Button - Now on the left */}
             <motion.button
               className="px-4 py-2 sm:px-6 sm:py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold shadow-lg flex items-center space-x-2 hover:from-purple-600 hover:to-pink-600 border border-white/20 font-supreme"
               onClick={onAddTask}
@@ -248,6 +236,17 @@ export function TaskListView({
             >
               <Plus className="w-4 h-4 sm:w-5 sm:h-5" />
               <span className="text-sm sm:text-base">New Task</span>
+            </motion.button>
+
+            {/* Completed Tasks Button - Now on the right, same dimensions */}
+            <motion.button
+              className="px-4 py-2 sm:px-6 sm:py-3 bg-green-500/20 text-green-300 rounded-full border border-green-500/30 hover:bg-green-500/30 flex items-center space-x-2 font-supreme font-semibold shadow-lg"
+              onClick={onViewCompletedTasks}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Award className="w-4 h-4 sm:w-5 sm:h-5" />
+              <span className="text-sm sm:text-base">Completed</span>
             </motion.button>
           </div>
 
