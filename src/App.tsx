@@ -127,6 +127,7 @@ function App() {
     
     createTask(newTaskData);
     setShowTaskForm(false);
+    // Reset to first task to show the newly created task
     setCurrentTaskIndex(0);
   }, [createTask, user, userCreatedTasks.length]);
 
@@ -167,6 +168,15 @@ function App() {
   const handleTitleClick = useCallback(() => {
     setCurrentTaskIndex(0);
   }, []);
+
+  // Handle create task button click - ensures proper navigation after creation
+  const handleCreateTaskClick = useCallback(() => {
+    if (!user && userCreatedTasks.length >= 3) {
+      setShowAuthForm(true);
+      return;
+    }
+    setShowTaskForm(true);
+  }, [user, userCreatedTasks.length]);
 
   // Show loading screen while checking auth
   if (authLoading) {
@@ -276,7 +286,7 @@ function App() {
           <div className="flex flex-col sm:flex-row gap-4 items-center justify-center">
             <motion.button
               className="px-8 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full text-white font-semibold font-supreme"
-              onClick={() => setShowTaskForm(true)}
+              onClick={handleCreateTaskClick}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -423,13 +433,7 @@ function App() {
                 ? 'bg-gray-500/50 cursor-not-allowed'
                 : 'bg-gradient-to-r from-purple-500 to-pink-500 hover:scale-110'
             }`}
-            onClick={() => {
-              if (!user && userCreatedTasks.length >= 3) {
-                setShowAuthForm(true);
-                return;
-              }
-              setShowTaskForm(true);
-            }}
+            onClick={handleCreateTaskClick}
             whileHover={!user && userCreatedTasks.length >= 3 ? {} : { scale: 1.1 }}
             whileTap={!user && userCreatedTasks.length >= 3 ? {} : { scale: 0.9 }}
           >
