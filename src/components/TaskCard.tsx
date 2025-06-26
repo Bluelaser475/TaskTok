@@ -84,7 +84,6 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
       <div className="absolute top-0 left-0 right-0 z-10 h-1 bg-black/20">
         <motion.div
           className="h-full bg-gradient-to-r from-white to-yellow-300"
-          initial={{ width: 0 }}
           animate={{ width: `${progress}%` }}
           transition={{ 
             duration: 0.8, 
