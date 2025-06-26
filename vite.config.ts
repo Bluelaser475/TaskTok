@@ -33,6 +33,11 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    rollupOptions: {
+      input: 'index.html'
+    }
+  },
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
