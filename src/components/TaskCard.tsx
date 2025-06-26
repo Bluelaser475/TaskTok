@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, Calendar, Target, Zap, Plus, Check, X, ChevronDown, Lock } from 'lucide-react';
+import { Clock, Calendar, Target, Zap, Plus, Check, X, ChevronDown, Lock, CheckCircle2 } from 'lucide-react';
 import { Task } from '../types/task';
 import { shouldDisplayDueDate } from '../utils/dateUtils';
 
@@ -28,6 +28,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
   const [newSubtaskText, setNewSubtaskText] = useState('');
   const [isAddingSubtask, setIsAddingSubtask] = useState(false);
   const [previousProgress, setPreviousProgress] = useState(0);
+  const [showCompletionConfirm, setShowCompletionConfirm] = useState(false);
 
   const completedSubtasks = task.subtasks.filter(st => st.completed).length;
   const progress = task.subtasks.length > 0 ? (completedSubtasks / task.subtasks.length) * 100 : 0;
@@ -56,10 +57,19 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
     }
   };
 
-  const handleCompleteTask = () => {
+  const handleCompleteTaskClick = () => {
+    setShowCompletionConfirm(true);
+  };
+
+  const handleConfirmCompletion = () => {
     if (!isDummyTask) {
       onCompleteTask(task.id);
     }
+    setShowCompletionConfirm(false);
+  };
+
+  const handleCancelCompletion = () => {
+    setShowCompletionConfirm(false);
   };
 
   return (
@@ -202,43 +212,46 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                       transition={{ delay: index * 0.1 }}
                     >
                       <motion.button
-                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                        className={`flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all duration-300 ${
                           subtask.completed
-                            ? 'bg-green-500 border-green-500'
+                            ? 'bg-green-500 border-green-500 shadow-lg shadow-green-500/30'
                             : isDummyTask
                             ? 'border-white/30 cursor-not-allowed'
-                            : 'border-white/50 hover:border-white/80'
+                            : 'border-white/50 hover:border-white/80 hover:bg-white/10'
                         }`}
                         onClick={() => handleToggleSubtask(subtask.id)}
                         whileHover={isDummyTask ? {} : { scale: 1.1 }}
                         whileTap={isDummyTask ? {} : { scale: 0.9 }}
                         animate={subtask.completed ? {
-                          scale: [1, 1.3, 1],
+                          scale: [1, 1.2, 1],
                           boxShadow: [
                             '0 0 0 rgba(34, 197, 94, 0)',
                             '0 0 15px rgba(34, 197, 94, 0.6)',
-                            '0 0 0 rgba(34, 197, 94, 0)'
+                            '0 0 5px rgba(34, 197, 94, 0.3)'
                           ]
                         } : {}}
-                        transition={{ duration: 0.8 }}
+                        transition={{ duration: 0.6 }}
                         disabled={isDummyTask}
                       >
-                        {subtask.completed && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: 'spring', stiffness: 500 }}
-                          >
-                            <Check className="w-4 h-4 text-white" />
-                          </motion.div>
-                        )}
+                        <AnimatePresence>
+                          {subtask.completed && (
+                            <motion.div
+                              initial={{ scale: 0, rotate: -180 }}
+                              animate={{ scale: 1, rotate: 0 }}
+                              exit={{ scale: 0, rotate: 180 }}
+                              transition={{ type: 'spring', stiffness: 500, damping: 25 }}
+                            >
+                              <Check className="w-4 h-4 text-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                         {isDummyTask && !subtask.completed && (
                           <Lock className="w-3 h-3 text-white/40" />
                         )}
                       </motion.button>
                       
                       <span
-                        className={`text-sm flex-1 break-words font-general-sans ${
+                        className={`text-sm flex-1 break-words font-general-sans transition-all duration-300 ${
                           subtask.completed 
                             ? 'text-white/60 line-through' 
                             : isDummyTask
@@ -248,6 +261,18 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                       >
                         {subtask.text}
                       </span>
+
+                      {/* Completion celebration effect */}
+                      {subtask.completed && (
+                        <motion.div
+                          className="flex-shrink-0"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                        >
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        </motion.div>
+                      )}
                     </motion.div>
                   ))}
 
@@ -258,9 +283,9 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                         {isAddingSubtask ? (
                           <motion.div
                             className="flex space-x-2 p-3 bg-white/10 backdrop-blur-sm rounded-xl border border-white/20"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                            initial={{ opacity: 0, scale: 0.95 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.95 }}
                           >
                             <input
                               type="text"
@@ -294,7 +319,7 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
                         ) : (
                           onAddSubtask && !task.completed && (
                             <motion.button
-                              className="flex items-center justify-center space-x-2 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme"
+                              className="flex items-center justify-center space-x-2 p-3 bg-white/5 backdrop-blur-sm rounded-xl border border-white/10 text-white/60 hover:text-white/80 hover:bg-white/10 font-supreme transition-all duration-200"
                               onClick={() => setIsAddingSubtask(true)}
                               whileHover={{ scale: 1.01 }}
                               whileTap={{ scale: 0.99 }}
@@ -312,18 +337,21 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
             </AnimatePresence>
           </motion.div>
 
-          {/* Complete Task Button - Only for non-dummy tasks */}
+          {/* Complete Task Button - Only for non-dummy tasks with all subtasks completed */}
           {!isDummyTask && allSubtasksCompleted && !task.completed && (
             <motion.button
-              className="w-full p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl text-white font-semibold text-center font-supreme"
-              onClick={handleCompleteTask}
-              whileHover={{ scale: 1.02 }}
+              className="w-full p-4 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl text-white font-semibold text-center font-supreme shadow-lg hover:shadow-xl transition-all duration-300"
+              onClick={handleCompleteTaskClick}
+              whileHover={{ scale: 1.02, boxShadow: '0 20px 40px rgba(34, 197, 94, 0.3)' }}
               whileTap={{ scale: 0.98 }}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.8 }}
             >
-              Complete Task ✨
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle2 className="w-5 h-5" />
+                <span>Complete Task ✨</span>
+              </div>
             </motion.button>
           )}
 
@@ -381,6 +409,72 @@ export function TaskCard({ task, onToggleSubtask, onCompleteTask, onAddSubtask }
           )}
         </div>
       </div>
+
+      {/* Completion Confirmation Modal */}
+      <AnimatePresence>
+        {showCompletionConfirm && (
+          <motion.div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-white/10 backdrop-blur-md rounded-3xl p-6 w-full max-w-sm border border-white/20 shadow-2xl"
+              initial={{ scale: 0.8, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.8, opacity: 0, y: 20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            >
+              <div className="text-center">
+                <motion.div
+                  className="w-16 h-16 bg-gradient-to-r from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4"
+                  animate={{ 
+                    scale: [1, 1.1, 1],
+                    boxShadow: [
+                      '0 0 0 rgba(34, 197, 94, 0)',
+                      '0 0 20px rgba(34, 197, 94, 0.5)',
+                      '0 0 0 rgba(34, 197, 94, 0)'
+                    ]
+                  }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                >
+                  <CheckCircle2 className="w-8 h-8 text-white" />
+                </motion.div>
+                
+                <h3 className="text-xl font-bold text-white mb-3 font-task-title">
+                  Complete Task?
+                </h3>
+                
+                <p className="text-white/80 text-sm mb-6 font-general-sans leading-relaxed">
+                  Are you sure you want to mark "<strong>{task.title}</strong>" as completed? This will move it to your completed tasks list.
+                </p>
+                
+                <div className="flex space-x-3">
+                  <motion.button
+                    className="flex-1 px-4 py-3 bg-white/10 rounded-xl text-white/80 hover:text-white hover:bg-white/20 border border-white/20 font-supreme transition-all duration-200"
+                    onClick={handleCancelCompletion}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    Cancel
+                  </motion.button>
+                  
+                  <motion.button
+                    className="flex-1 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl text-white font-semibold hover:from-green-600 hover:to-emerald-600 flex items-center justify-center space-x-2 font-supreme shadow-lg"
+                    onClick={handleConfirmCompletion}
+                    whileHover={{ scale: 1.02, boxShadow: '0 10px 30px rgba(34, 197, 94, 0.3)' }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    <span>Complete</span>
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
