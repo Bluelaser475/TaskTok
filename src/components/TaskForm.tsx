@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Calendar, Clock, Target, RotateCcw, Loader2, Sparkles, AlertCircle, Trash2, Wand2, Zap, AlertTriangle, CheckCircle, Lock, User } from 'lucide-react';
 import { Task, Subtask } from '../types/task';
-import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 
 interface TaskFormProps {
@@ -76,52 +75,39 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
       console.log('🎨 Calling AI task context generation...');
       setContextStatus({ type: null, message: '' });
 
-      // Check if Supabase URL is configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      if (!supabaseUrl) {
-        throw new Error('Supabase URL not configured in environment variables');
-      }
+      // Use the provided Supabase edge function URL
+      const edgeFunctionUrl = 'https://mjvaptkhhscbeiqywjyl.supabase.co/functions/v1/generate-subtasks';
 
-      // Check if we're in development and the URL looks like a local dev server
-      if (supabaseUrl.includes('localhost') || supabaseUrl.includes('127.0.0.1') || supabaseUrl.includes('local-credentialless')) {
-        console.warn('⚠️ Detected local development environment, AI features may not work');
-        throw new Error('AI features are not available in local development mode');
-      }
+      console.log('📡 Calling edge function:', edgeFunctionUrl);
 
-      const { data, error } = await supabase.functions.invoke('generate-task-context', {
-        body: {
+      const response = await fetch(edgeFunctionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`,
+        },
+        body: JSON.stringify({
           taskName: title.trim(),
           taskDetails: description.trim(),
           dueDate: dueDate || undefined,
           recurrence: recurrence || undefined
-        }
+        })
       });
 
-      if (error) {
-        console.error('❌ Edge function error:', error);
-        
-        // Handle different types of errors
-        if (error.message?.includes('Failed to fetch') || 
-            error.message?.includes('NetworkError') ||
-            error.message?.includes('Failed to send a request')) {
-          throw new Error('Unable to connect to AI service. This might be due to local development environment or network issues.');
-        }
-        
-        if (error.message?.includes('Function not found')) {
-          throw new Error('AI task context function is not deployed. Please deploy the edge function first.');
-        }
-        
-        throw new Error(error.message || 'Failed to generate task context');
+      if (!response.ok) {
+        console.error('❌ Edge function HTTP error:', response.status, response.statusText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
+
+      const data = await response.json();
+      console.log('✅ Edge function response:', data);
 
       if (!data || !data.success) {
         console.error('❌ AI generation failed:', data?.error);
         throw new Error(data?.error || 'AI task context generation failed');
       }
 
-      console.log('✅ AI generated task context:', data);
-
-      // Update form with AI-generated content (no image)
+      // Update form with AI-generated content
       setFormData(prev => ({
         ...prev,
         motivationalQuote: data.quote || '',
@@ -173,12 +159,12 @@ export function TaskForm({ onSubmit, onClose }: TaskFormProps) {
 
       // Set appropriate error message
       let errorMessage = 'Generated offline suggestions. ';
-      if (error.message?.includes('local development')) {
-        errorMessage += 'AI features require production deployment.';
-      } else if (error.message?.includes('not deployed')) {
-        errorMessage += 'Please deploy the edge function first.';
-      } else if (error.message?.includes('Unable to connect')) {
+      if (error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
         errorMessage += 'Check your internet connection.';
+      } else if (error.message?.includes('HTTP 404')) {
+        errorMessage += 'AI service endpoint not found.';
+      } else if (error.message?.includes('HTTP 401') || error.message?.includes('HTTP 403')) {
+        errorMessage += 'Authentication failed.';
       } else {
         errorMessage += 'AI service temporarily unavailable.';
       }
