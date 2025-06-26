@@ -29,6 +29,13 @@ interface TaskContextResponse {
   source?: 'ai' | 'fallback' | 'emergency_fallback';
 }
 
+interface AIGenerationResult {
+  quote: string;
+  subtasks: string[];
+  success: boolean;
+  error?: string;
+}
+
 Deno.serve(async (req: Request): Promise<Response> => {
   // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
@@ -65,25 +72,35 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
     let quote: string = ''
     let subtasks: string[] = []
-    let source: 'ai' | 'fallback' | 'emergency_fallback' = 'emergency_fallback'
+    let source: 'ai' | 'fallback' | 'emergency_fallback' = 'fallback'
 
-    // Try AI generation first, but always fall back to rule-based generation
-    try {
-      const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    // Try AI generation first with explicit error handling
+    const openaiApiKey = Deno.env.get('OPENAI_API_KEY')
+    
+    if (openaiApiKey && openaiApiKey.trim().length > 0) {
+      console.log('🔑 OpenAI API key found, attempting AI generation...')
       
-      if (openaiApiKey && openaiApiKey.trim().length > 0) {
-        console.log('🔑 OpenAI API key found, attempting AI generation...')
+      try {
         const aiResult = await generateAITaskContext(taskName, taskDetails, dueDate, recurrence, openaiApiKey)
-        quote = aiResult.quote
-        subtasks = aiResult.subtasks
-        source = 'ai'
-        console.log('✅ AI generated task context successfully')
-      } else {
-        console.log('⚠️ No OpenAI API key configured, using rule-based generation')
-        throw new Error('OpenAI API key not configured')
+        
+        if (aiResult.success) {
+          quote = aiResult.quote
+          subtasks = aiResult.subtasks
+          source = 'ai'
+          console.log('✅ AI generated task context successfully')
+        } else {
+          console.warn('⚠️ AI generation failed:', aiResult.error)
+          throw new Error(aiResult.error || 'AI generation failed')
+        }
+      } catch (aiError) {
+        console.warn('⚠️ AI generation error, using rule-based fallback:', aiError)
+        const fallbackResult = generateRuleBasedTaskContext(taskName, taskDetails, dueDate, recurrence)
+        quote = fallbackResult.quote
+        subtasks = fallbackResult.subtasks
+        source = 'fallback'
       }
-    } catch (aiError) {
-      console.warn('⚠️ AI generation failed, using rule-based fallback:', aiError)
+    } else {
+      console.log('⚠️ No OpenAI API key configured, using rule-based generation')
       const fallbackResult = generateRuleBasedTaskContext(taskName, taskDetails, dueDate, recurrence)
       quote = fallbackResult.quote
       subtasks = fallbackResult.subtasks
@@ -135,13 +152,9 @@ async function generateAITaskContext(
   dueDate: string = '',
   recurrence: string = '',
   apiKey: string
-): Promise<{ quote: string; subtasks: string[] }> {
+): Promise<AIGenerationResult> {
   console.log('🤖 Starting AI generation...')
   
-  let quote = ''
-  let subtasks: string[] = []
-
-  // Generate Quote and Subtasks using GPT
   try {
     console.log('💭 Generating quote and subtasks with GPT...')
     
@@ -184,61 +197,110 @@ ${contextInfo}
 
 Respond with only the JSON object.`
 
-    const chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
-        ],
-        temperature: 0.7,
-        max_tokens: 300,
-        response_format: { type: 'json_object' }
+    // Add timeout and explicit error handling for fetch
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10 second timeout
+
+    let chatResponse: Response
+    
+    try {
+      chatResponse = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+          ],
+          temperature: 0.7,
+          max_tokens: 300,
+          response_format: { type: 'json_object' }
+        }),
+        signal: controller.signal
       })
-    })
-
-    if (chatResponse.ok) {
-      const chatData = await chatResponse.json()
-      const content = chatData.choices[0]?.message?.content
-
-      if (content) {
-        const parsedContent = JSON.parse(content)
-        quote = parsedContent.quote || "Every step forward is progress."
-        subtasks = parsedContent.subtasks || []
-
-        // Validate subtasks
-        if (!Array.isArray(subtasks) || subtasks.length !== 3) {
-          throw new Error('Invalid subtasks format')
-        }
-
-        // Ensure all subtasks are non-empty strings
-        subtasks = subtasks.map(task => String(task).trim()).filter(task => task.length > 0)
-        
-        if (subtasks.length !== 3) {
-          throw new Error('Some subtasks are empty')
-        }
-
-        console.log('✅ Quote and subtasks generated successfully')
+    } catch (fetchError) {
+      clearTimeout(timeoutId)
+      console.error('❌ Network error during OpenAI API call:', fetchError)
+      return {
+        success: false,
+        error: `Network error: ${fetchError.message}`,
+        quote: '',
+        subtasks: []
       }
-    } else {
-      throw new Error('Chat completion failed')
     }
-  } catch (chatError) {
-    console.error('❌ Quote/subtasks generation error:', chatError)
-    quote = "Take it one step at a time."
-    subtasks = [
-      "Plan and prepare for the task",
-      `Work on completing: ${taskName}`,
-      "Review and finalize the work"
-    ]
-  }
 
-  return { quote, subtasks }
+    clearTimeout(timeoutId)
+
+    if (!chatResponse.ok) {
+      const errorText = await chatResponse.text().catch(() => 'Unknown error')
+      console.error('❌ OpenAI API error:', chatResponse.status, errorText)
+      return {
+        success: false,
+        error: `OpenAI API error: ${chatResponse.status} - ${errorText}`,
+        quote: '',
+        subtasks: []
+      }
+    }
+
+    const chatData = await chatResponse.json()
+    const content = chatData.choices[0]?.message?.content
+
+    if (!content) {
+      return {
+        success: false,
+        error: 'No content received from OpenAI API',
+        quote: '',
+        subtasks: []
+      }
+    }
+
+    const parsedContent = JSON.parse(content)
+    const quote = parsedContent.quote || "Every step forward is progress."
+    let subtasks = parsedContent.subtasks || []
+
+    // Validate subtasks
+    if (!Array.isArray(subtasks) || subtasks.length !== 3) {
+      return {
+        success: false,
+        error: 'Invalid subtasks format from AI response',
+        quote: '',
+        subtasks: []
+      }
+    }
+
+    // Ensure all subtasks are non-empty strings
+    subtasks = subtasks.map(task => String(task).trim()).filter(task => task.length > 0)
+    
+    if (subtasks.length !== 3) {
+      return {
+        success: false,
+        error: 'Some subtasks are empty after validation',
+        quote: '',
+        subtasks: []
+      }
+    }
+
+    console.log('✅ Quote and subtasks generated successfully')
+    
+    return {
+      success: true,
+      quote,
+      subtasks
+    }
+
+  } catch (error) {
+    console.error('❌ Unexpected error in AI generation:', error)
+    return {
+      success: false,
+      error: `Unexpected error: ${error.message}`,
+      quote: '',
+      subtasks: []
+    }
+  }
 }
 
 function generateRuleBasedTaskContext(
