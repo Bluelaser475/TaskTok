@@ -258,8 +258,8 @@ function App() {
     );
   }
 
-  // Show empty state if no active tasks
-  if (activeTasks.length === 0 && !showTaskList && !showCompletedTasks) {
+  // Show empty state if no active tasks - FIXED: Only show if task form is not active
+  if (activeTasks.length === 0 && !showTaskList && !showCompletedTasks && !showTaskForm) {
     return (
       <div className="h-screen bg-gradient-to-br from-purple-900 to-pink-900 flex items-center justify-center">
         <StatsBar stats={stats} onTitleClick={handleTitleClick} onLoginClick={handleLoginClick} />
