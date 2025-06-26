@@ -315,32 +315,6 @@ function App() {
         </div>
       )}
 
-      {/* Visual Progress Indicator - Left Side (moved right to accommodate arrows) */}
-      {!showTaskList && tasks.length > 1 && (
-        <motion.div
-          className="fixed left-20 top-1/2 -translate-y-1/2 z-30 flex flex-col space-y-2"
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.7 }}
-        >
-          {tasks.map((_, index) => (
-            <motion.div
-              key={index}
-              className={`w-1 h-6 rounded-full transition-all duration-300 ${
-                index === currentTaskIndex 
-                  ? 'bg-white' 
-                  : 'bg-white/30'
-              }`}
-              animate={{
-                scale: index === currentTaskIndex ? 1.2 : 1,
-                opacity: index === currentTaskIndex ? 1 : 0.6
-              }}
-              transition={{ duration: 0.3 }}
-            />
-          ))}
-        </motion.div>
-      )}
-
       {/* Single Task Display with AnimatePresence */}
       {!showTaskList && tasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
