@@ -47,10 +47,13 @@ function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [swipeDirection, setSwipeDirection] = useState<'up' | 'down' | null>(null);
 
-  const currentTask = tasks[currentTaskIndex];
   const userCreatedTasks = user ? tasks : tasks.filter(task => !task.id.startsWith('dummy-'));
   const completedTasks = tasks.filter(task => task.completed);
   const activeTasks = tasks.filter(task => !task.completed);
+  
+  // Fix: Use activeTasks for currentTask calculation
+  const currentTask = activeTasks.length > 0 ? activeTasks[Math.min(currentTaskIndex, activeTasks.length - 1)] : null;
+  
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Navigation helper functions
@@ -337,10 +340,10 @@ function App() {
         </div>
       )}
 
-      {/* Single Task Display with AnimatePresence */}
-      {!showTaskList && !showCompletedTasks && activeTasks.length > 0 && currentTask && !currentTask.completed && (
+      {/* Single Task Display with AnimatePresence - Fixed condition */}
+      {!showTaskList && !showCompletedTasks && activeTasks.length > 0 && currentTask && (
         <div className="h-full w-full relative">
-          <AnimatePresence>
+          <AnimatePresence mode="wait">
             <motion.div
               key={currentTask.id}
               className="h-full w-full absolute inset-0"
